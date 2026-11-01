@@ -1,0 +1,12 @@
+{
+  "type": "lottie",
+  "file": "animation.json",
+  "width": 200,
+  "height": 200,
+  "background": "#0F6E56",
+  "darkBackground": "#04342C",
+  "loop": true,
+  "loopMarker": "loop",
+  "stateMachine": null,
+  "artboard": null
+}

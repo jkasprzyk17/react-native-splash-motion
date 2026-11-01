@@ -1,0 +1,13 @@
+{
+  "data": [
+    {
+      "filename": "config.json",
+      "idiom": "universal",
+      "universal-type-identifier": "public.json"
+    }
+  ],
+  "info": {
+    "author": "react-native-splash-motion",
+    "version": 1
+  }
+}

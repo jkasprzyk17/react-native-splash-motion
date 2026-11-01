@@ -1,0 +1,23 @@
+{
+  "cxxNamespace": ["splashmotion"],
+  "ios": {
+    "iosModuleName": "RNSplashMotion"
+  },
+  "android": {
+    "androidNamespace": ["splashmotion"],
+    "androidCxxLibName": "splashmotion"
+  },
+  "autolinking": {
+    "SplashMotionModule": {
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridSplashMotion"
+      },
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridSplashMotion"
+      }
+    }
+  },
+  "ignorePaths": ["node_modules", "example", "lib"]
+}
