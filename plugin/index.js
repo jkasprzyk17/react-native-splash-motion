@@ -7,6 +7,8 @@
  *     "source": "./assets/splash.json",
  *     "background": "#0F6E56"
  *   }]]
+ *
+ * `source` can be a Lottie .json, a dotLottie .lottie or a Rive .riv file.
  */
 const core = require('../cli/core');
 

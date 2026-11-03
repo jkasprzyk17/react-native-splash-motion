@@ -8,13 +8,14 @@ const HELP = `
   Usage: npx splash-motion generate <animation> [options]
 
   Generates everything your app needs to show a native animated splash.
-  <animation> is a Lottie .json file or a Rive .riv file.
+  <animation> is a Lottie .json, a dotLottie .lottie or a Rive .riv file.
 
   Options:
     --background <hex>        Background color              (default: #FFFFFF)
     --dark-background <hex>   Background color in dark mode
     --width <number>          Animation width in dp/pt      (default: 160)
     --height <number>         Animation height in dp/pt     (default: keeps aspect ratio)
+                              Scaled down at runtime to fit 90% of the screen
     --still <png>             Optional image shown by the iOS launch screen
                               (use your animation's first frame)
     --loop-marker <name>      Lottie: only loop this marker's range

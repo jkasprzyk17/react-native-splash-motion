@@ -6,6 +6,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 const LOG = '[splash-motion]';
 
@@ -37,12 +38,99 @@ function writeJson(file, data) {
 }
 
 // ---------------------------------------------------------------------------
+// dotLottie
+
+/** Minimal ZIP reader (stored + deflate entries), enough for .lottie archives. */
+function readZip(buffer) {
+  let eocd = -1;
+  for (let i = buffer.length - 22; i >= Math.max(0, buffer.length - 22 - 0xffff); i--) {
+    if (buffer.readUInt32LE(i) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error('not a ZIP archive');
+
+  const entries = new Map();
+  let offset = buffer.readUInt32LE(eocd + 16);
+  for (let n = buffer.readUInt16LE(eocd + 10); n > 0; n--) {
+    if (buffer.readUInt32LE(offset) !== 0x02014b50) throw new Error('corrupt ZIP directory');
+    const nameLength = buffer.readUInt16LE(offset + 28);
+    entries.set(buffer.toString('utf8', offset + 46, offset + 46 + nameLength), {
+      method: buffer.readUInt16LE(offset + 10),
+      size: buffer.readUInt32LE(offset + 20),
+      header: buffer.readUInt32LE(offset + 42),
+    });
+    offset += 46 + nameLength + buffer.readUInt16LE(offset + 30) + buffer.readUInt16LE(offset + 32);
+  }
+
+  return {
+    names: [...entries.keys()],
+    has: (name) => entries.has(name),
+    read(name) {
+      const { method, size, header } = entries.get(name);
+      const start = header + 30 + buffer.readUInt16LE(header + 26) + buffer.readUInt16LE(header + 28);
+      const data = buffer.subarray(start, start + size);
+      if (method === 0) return data;
+      if (method === 8) return zlib.inflateRawSync(data);
+      throw new Error(`unsupported compression method ${method}`);
+    },
+  };
+}
+
+const IMAGE_TYPES = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+
+/**
+ * Unpacks a .lottie (v1 or v2) into plain Lottie JSON. Uses the active (or first)
+ * animation and inlines bundled images, since the native players get one file.
+ */
+function readDotLottie(file) {
+  const name = path.basename(file);
+  let zip;
+  let manifest = {};
+  try {
+    zip = readZip(fs.readFileSync(file));
+    if (zip.has('manifest.json')) manifest = JSON.parse(zip.read('manifest.json').toString('utf8'));
+  } catch (error) {
+    throw new Error(`${LOG} ${name} is not a valid .lottie file (${error.message}).`);
+  }
+
+  const animations = manifest.animations ?? [];
+  const id = manifest.activeAnimationId ?? animations[0]?.id;
+  const entry =
+    [`a/${id}.json`, `animations/${id}.json`].find((p) => id && zip.has(p)) ??
+    zip.names.find((p) => /^(a|animations)\/[^/]+\.json$/.test(p));
+  if (!entry) throw new Error(`${LOG} ${name} doesn't contain a Lottie animation.`);
+  if (animations.length > 1) {
+    console.warn(`${LOG} ${name} has ${animations.length} animations — using "${path.basename(entry, '.json')}".`);
+  }
+
+  let json;
+  try {
+    json = JSON.parse(zip.read(entry).toString('utf8'));
+  } catch {
+    throw new Error(`${LOG} ${name} contains an invalid Lottie animation (${entry}).`);
+  }
+
+  for (const asset of json.assets ?? []) {
+    if (!asset.p || asset.e === 1 || String(asset.p).startsWith('data:')) continue;
+    const image = [`i/${asset.p}`, `images/${asset.p}`].find((p) => zip.has(p));
+    if (!image) continue;
+    const mime = IMAGE_TYPES[path.extname(image).toLowerCase()] ?? 'image/png';
+    asset.p = `data:${mime};base64,${zip.read(image).toString('base64')}`;
+    asset.u = '';
+    asset.e = 1;
+  }
+  return json;
+}
+
+// ---------------------------------------------------------------------------
 // Input
 
 /** Reads the animation and resolves the final, normalized config. */
 function resolveOptions(projectRoot, options) {
   if (!options.source) {
-    throw new Error(`${LOG} Missing animation file. Usage: npx splash-motion generate <file.json|file.riv>`);
+    throw new Error(`${LOG} Missing animation file. Usage: npx splash-motion generate <file.json|file.lottie|file.riv>`);
   }
   const source = path.resolve(projectRoot, options.source);
   if (!fs.existsSync(source)) {
@@ -50,23 +138,24 @@ function resolveOptions(projectRoot, options) {
   }
 
   const ext = path.extname(source).toLowerCase();
-  let type;
-  let ratio = 1;
+  let type = 'lottie';
+  let lottie = null;
   if (ext === '.json') {
-    type = 'lottie';
     try {
-      const json = JSON.parse(fs.readFileSync(source, 'utf8'));
-      if (json.w && json.h) ratio = json.h / json.w;
+      lottie = JSON.parse(fs.readFileSync(source, 'utf8'));
     } catch {
       throw new Error(`${LOG} ${path.basename(source)} is not a valid Lottie JSON file.`);
     }
+  } else if (ext === '.lottie') {
+    lottie = readDotLottie(source);
   } else if (ext === '.riv') {
     type = 'rive';
-  } else if (ext === '.lottie') {
-    throw new Error(`${LOG} .lottie files aren't supported yet. Export your animation as Lottie JSON.`);
   } else {
-    throw new Error(`${LOG} Unsupported file type "${ext}". Use a Lottie .json or a Rive .riv file.`);
+    throw new Error(`${LOG} Unsupported file type "${ext}". Use a Lottie .json, a dotLottie .lottie or a Rive .riv file.`);
   }
+  const ratio = lottie && lottie.w && lottie.h ? lottie.h / lottie.w : 1;
+  // .json and .riv are copied as-is; a .lottie ships as the plain JSON unpacked above.
+  const data = ext === '.lottie' ? Buffer.from(JSON.stringify(lottie)) : fs.readFileSync(source);
 
   const width = Number(options.width ?? 160);
   const height = Number(options.height ?? Math.round(width * ratio));
@@ -86,6 +175,7 @@ function resolveOptions(projectRoot, options) {
 
   return {
     source,
+    data,
     type,
     width,
     height,
@@ -149,6 +239,10 @@ function colorComponents(c) {
   };
 }
 
+// Same sizing as the native overlay: the configured size, scaled down (keeping
+// the aspect ratio) to fit MAX_SCREEN_FRACTION of the screen.
+const MAX_SCREEN_FRACTION = 0.9;
+
 function launchStoryboard(o) {
   const c = o.background;
   const image = o.still
@@ -156,8 +250,8 @@ function launchStoryboard(o) {
                         <subviews>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="SplashMotionStill" translatesAutoresizingMaskIntoConstraints="NO" id="lsI-mg-001">
                                 <constraints>
-                                    <constraint firstAttribute="width" constant="${o.width}" id="lsW-id-001"/>
-                                    <constraint firstAttribute="height" constant="${o.height}" id="lsH-gt-001"/>
+                                    <constraint firstAttribute="width" constant="${o.width}" priority="750" id="lsW-id-001"/>
+                                    <constraint firstAttribute="width" secondItem="lsI-mg-001" secondAttribute="height" multiplier="${o.width / o.height}" id="lsA-sp-001"/>
                                 </constraints>
                             </imageView>
                         </subviews>`
@@ -167,6 +261,8 @@ function launchStoryboard(o) {
                         <constraints>
                             <constraint firstItem="lsI-mg-001" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="lsC-x0-001"/>
                             <constraint firstItem="lsI-mg-001" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="lsC-y0-001"/>
+                            <constraint firstItem="lsI-mg-001" firstAttribute="width" relation="lessThanOrEqual" secondItem="Ze5-6b-2t3" secondAttribute="width" multiplier="${MAX_SCREEN_FRACTION}" id="lsM-xw-001"/>
+                            <constraint firstItem="lsI-mg-001" firstAttribute="height" relation="lessThanOrEqual" secondItem="Ze5-6b-2t3" secondAttribute="height" multiplier="${MAX_SCREEN_FRACTION}" id="lsM-xh-001"/>
                         </constraints>`
     : '';
   const imageResource = o.still
@@ -236,7 +332,7 @@ function generateIos(projectRoot, o) {
   const animFile = o.type === 'rive' ? 'animation.riv' : 'animation.json';
   const animDir = path.join(assets, 'SplashMotionAnimation.dataset');
   fs.rmSync(animDir, { recursive: true, force: true });
-  write(path.join(animDir, animFile), fs.readFileSync(o.source));
+  write(path.join(animDir, animFile), o.data);
   writeJson(path.join(animDir, 'Contents.json'), {
     data: [
       {
@@ -295,7 +391,7 @@ function generateAndroidFiles(projectRoot, o) {
   const assetsDir = path.join(main, 'assets', 'splashmotion');
   fs.rmSync(assetsDir, { recursive: true, force: true });
   const animFile = o.type === 'rive' ? 'animation.riv' : 'animation.json';
-  write(path.join(assetsDir, animFile), fs.readFileSync(o.source));
+  write(path.join(assetsDir, animFile), o.data);
   writeJson(path.join(assetsDir, 'config.json'), runtimeConfig(o, animFile));
 
   write(path.join(main, 'res', 'values', 'splashmotion_colors.xml'), colorsXml(o.background.hex));

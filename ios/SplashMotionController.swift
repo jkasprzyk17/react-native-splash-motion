@@ -4,6 +4,8 @@ import UIKit
 /// when JavaScript calls `hide()`.
 final class SplashMotionController {
   static let shared = SplashMotionController()
+  /// Keep in sync with `MAX_SCREEN_FRACTION` (Android) and the CLI's launch storyboard.
+  static let maxScreenFraction: CGFloat = 0.9
 
   private let lock = NSLock()
   private var _visible = false
@@ -52,11 +54,16 @@ final class SplashMotionController {
     let animationView = player.view
     animationView.translatesAutoresizingMaskIntoConstraints = false
     container.addSubview(animationView)
+    // Configured size, scaled down (keeping the aspect ratio) to fit 90% of the screen.
+    let preferredWidth = animationView.widthAnchor.constraint(equalToConstant: CGFloat(config.width))
+    preferredWidth.priority = .defaultHigh
     NSLayoutConstraint.activate([
       animationView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
       animationView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-      animationView.widthAnchor.constraint(equalToConstant: CGFloat(config.width)),
-      animationView.heightAnchor.constraint(equalToConstant: CGFloat(config.height)),
+      animationView.widthAnchor.constraint(equalTo: animationView.heightAnchor, multiplier: CGFloat(config.width / config.height)),
+      animationView.widthAnchor.constraint(lessThanOrEqualTo: container.widthAnchor, multiplier: Self.maxScreenFraction),
+      animationView.heightAnchor.constraint(lessThanOrEqualTo: container.heightAnchor, multiplier: Self.maxScreenFraction),
+      preferredWidth,
     ])
 
     window.addSubview(container)
