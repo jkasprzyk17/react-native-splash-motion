@@ -71,17 +71,5 @@ namespace margelo::nitro::splashmotion {
     auto __result = method(_javaPart);
     return static_cast<bool>(__result);
   }
-  void JHybridSplashMotionModuleSpec::setNumber(const std::string& name, double value) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* name */, double /* value */)>("setNumber");
-    method(_javaPart, jni::make_jstring(name), value);
-  }
-  void JHybridSplashMotionModuleSpec::setBoolean(const std::string& name, bool value) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* name */, jboolean /* value */)>("setBoolean");
-    method(_javaPart, jni::make_jstring(name), value);
-  }
-  void JHybridSplashMotionModuleSpec::trigger(const std::string& name) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* name */)>("trigger");
-    method(_javaPart, jni::make_jstring(name));
-  }
 
 } // namespace margelo::nitro::splashmotion

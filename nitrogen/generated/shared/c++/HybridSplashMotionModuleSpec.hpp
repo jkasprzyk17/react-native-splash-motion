@@ -18,7 +18,6 @@ namespace margelo::nitro::splashmotion { struct HideConfig; }
 
 #include <NitroModules/Promise.hpp>
 #include "HideConfig.hpp"
-#include <string>
 
 namespace margelo::nitro::splashmotion {
 
@@ -53,9 +52,6 @@ namespace margelo::nitro::splashmotion {
       // Methods
       virtual std::shared_ptr<Promise<void>> hide(const HideConfig& config) = 0;
       virtual bool isVisible() = 0;
-      virtual void setNumber(const std::string& name, double value) = 0;
-      virtual void setBoolean(const std::string& name, bool value) = 0;
-      virtual void trigger(const std::string& name) = 0;
 
     protected:
       // Hybrid Setup

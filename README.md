@@ -21,7 +21,7 @@ Most "animated splash" solutions render the animation with React, so it can only
 ## Installation
 
 ```sh
-npm install react-native-splash-motion react-native-nitro-modules
+yarn add react-native-splash-motion react-native-nitro-modules
 ```
 
 ## Your animation file
@@ -54,7 +54,7 @@ Both must be positive numbers; decimals are fine. There is no upper limit, but a
 Generate the splash from your animation, then rebuild:
 
 ```sh
-npx splash-motion generate assets/splash.json --background "#0F6E56"
+yarn splash-motion generate assets/splash.json --background "#0F6E56"
 cd ios && pod install
 ```
 
@@ -83,7 +83,7 @@ Remove `expo-splash-screen` (SplashMotion replaces it), then add the plugin:
 ```
 
 ```sh
-npx expo prebuild --clean
+yarn expo prebuild --clean
 ```
 
 ## Usage
@@ -134,7 +134,7 @@ Calls `hide(options)` as soon as `ready` is `true`.
 ## CLI
 
 ```
-npx splash-motion generate <animation> [options]
+yarn splash-motion generate <animation> [options]
 
   <animation>               A Lottie .json or a dotLottie .lottie file
 
@@ -188,7 +188,7 @@ jest.mock('react-native-splash-motion', () => ({
 ## Troubleshooting
 
 - **Nothing changed** — native assets only update on a rebuild. Re-run `pod install` and rebuild; a JS reload isn't enough.
-- **Expo shows the old splash** — make sure `expo-splash-screen` is removed, then `npx expo prebuild --clean`.
+- **Expo shows the old splash** — make sure `expo-splash-screen` is removed, then `yarn expo prebuild --clean`.
 
 ## Roadmap
 

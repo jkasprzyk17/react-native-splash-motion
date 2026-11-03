@@ -44,11 +44,10 @@ namespace margelo::nitro::splashmotion {
     std::optional<double> minDuration     SWIFT_PRIVATE;
     std::optional<bool> waitForLoop     SWIFT_PRIVATE;
     std::optional<std::string> outro     SWIFT_PRIVATE;
-    std::optional<double> outroDuration     SWIFT_PRIVATE;
 
   public:
     HideConfig() = default;
-    explicit HideConfig(std::optional<double> fade, std::optional<double> minDuration, std::optional<bool> waitForLoop, std::optional<std::string> outro, std::optional<double> outroDuration): fade(fade), minDuration(minDuration), waitForLoop(waitForLoop), outro(outro), outroDuration(outroDuration) {}
+    explicit HideConfig(std::optional<double> fade, std::optional<double> minDuration, std::optional<bool> waitForLoop, std::optional<std::string> outro): fade(fade), minDuration(minDuration), waitForLoop(waitForLoop), outro(outro) {}
 
   public:
     friend bool operator==(const HideConfig& lhs, const HideConfig& rhs) = default;
@@ -67,8 +66,7 @@ namespace margelo::nitro {
         JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fade"))),
         JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "minDuration"))),
         JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "waitForLoop"))),
-        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "outro"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "outroDuration")))
+        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "outro")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::splashmotion::HideConfig& arg) {
@@ -77,7 +75,6 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "minDuration"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.minDuration));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "waitForLoop"), JSIConverter<std::optional<bool>>::toJSI(runtime, arg.waitForLoop));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "outro"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.outro));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "outroDuration"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.outroDuration));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -92,7 +89,6 @@ namespace margelo::nitro {
       if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "minDuration")))) return false;
       if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "waitForLoop")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "outro")))) return false;
-      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "outroDuration")))) return false;
       return true;
     }
   };

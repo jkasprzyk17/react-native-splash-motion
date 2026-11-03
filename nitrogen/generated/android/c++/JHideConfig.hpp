@@ -40,14 +40,11 @@ namespace margelo::nitro::splashmotion {
       jni::local_ref<jni::JBoolean> waitForLoop = this->getFieldValue(fieldWaitForLoop);
       static const auto fieldOutro = clazz->getField<jni::JString>("outro");
       jni::local_ref<jni::JString> outro = this->getFieldValue(fieldOutro);
-      static const auto fieldOutroDuration = clazz->getField<jni::JDouble>("outroDuration");
-      jni::local_ref<jni::JDouble> outroDuration = this->getFieldValue(fieldOutroDuration);
       return HideConfig(
         fade != nullptr ? std::make_optional(fade->value()) : std::nullopt,
         minDuration != nullptr ? std::make_optional(minDuration->value()) : std::nullopt,
         waitForLoop != nullptr ? std::make_optional(static_cast<bool>(waitForLoop->value())) : std::nullopt,
-        outro != nullptr ? std::make_optional(outro->toStdString()) : std::nullopt,
-        outroDuration != nullptr ? std::make_optional(outroDuration->value()) : std::nullopt
+        outro != nullptr ? std::make_optional(outro->toStdString()) : std::nullopt
       );
     }
 
@@ -57,7 +54,7 @@ namespace margelo::nitro::splashmotion {
      */
     [[maybe_unused]]
     static jni::local_ref<JHideConfig::javaobject> fromCpp(const HideConfig& value) {
-      using JSignature = JHideConfig(jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JDouble>);
+      using JSignature = JHideConfig(jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JString>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -65,8 +62,7 @@ namespace margelo::nitro::splashmotion {
         value.fade.has_value() ? jni::JDouble::valueOf(value.fade.value()) : nullptr,
         value.minDuration.has_value() ? jni::JDouble::valueOf(value.minDuration.value()) : nullptr,
         value.waitForLoop.has_value() ? jni::JBoolean::valueOf(value.waitForLoop.value()) : nullptr,
-        value.outro.has_value() ? jni::make_jstring(value.outro.value()) : nullptr,
-        value.outroDuration.has_value() ? jni::JDouble::valueOf(value.outroDuration.value()) : nullptr
+        value.outro.has_value() ? jni::make_jstring(value.outro.value()) : nullptr
       );
     }
   };

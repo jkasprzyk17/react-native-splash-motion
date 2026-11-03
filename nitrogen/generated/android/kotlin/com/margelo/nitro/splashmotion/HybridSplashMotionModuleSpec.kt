@@ -37,18 +37,6 @@ abstract class HybridSplashMotionModuleSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun isVisible(): Boolean
-  
-  @DoNotStrip
-  @Keep
-  abstract fun setNumber(name: String, value: Double): Unit
-  
-  @DoNotStrip
-  @Keep
-  abstract fun setBoolean(name: String, value: Boolean): Unit
-  
-  @DoNotStrip
-  @Keep
-  abstract fun trigger(name: String): Unit
 
   // Default implementation of `HybridObject.toString()`
   override fun toString(): String {

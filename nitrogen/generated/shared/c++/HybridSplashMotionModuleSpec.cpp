@@ -16,9 +16,6 @@ namespace margelo::nitro::splashmotion {
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridMethod("hide", &HybridSplashMotionModuleSpec::hide);
       prototype.registerHybridMethod("isVisible", &HybridSplashMotionModuleSpec::isVisible);
-      prototype.registerHybridMethod("setNumber", &HybridSplashMotionModuleSpec::setNumber);
-      prototype.registerHybridMethod("setBoolean", &HybridSplashMotionModuleSpec::setBoolean);
-      prototype.registerHybridMethod("trigger", &HybridSplashMotionModuleSpec::trigger);
     });
   }
 

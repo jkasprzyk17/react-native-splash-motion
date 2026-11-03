@@ -18,7 +18,7 @@ public extension HideConfig {
   /**
    * Create a new instance of `HideConfig`.
    */
-  init(fade: Double?, minDuration: Double?, waitForLoop: Bool?, outro: String?, outroDuration: Double?) {
+  init(fade: Double?, minDuration: Double?, waitForLoop: Bool?, outro: String?) {
     self.init({ () -> bridge.std__optional_double_ in
       if let __unwrappedValue = fade {
         return bridge.create_std__optional_double_(__unwrappedValue)
@@ -40,12 +40,6 @@ public extension HideConfig {
     }(), { () -> bridge.std__optional_std__string_ in
       if let __unwrappedValue = outro {
         return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
-      } else {
-        return .init()
-      }
-    }(), { () -> bridge.std__optional_double_ in
-      if let __unwrappedValue = outroDuration {
-        return bridge.create_std__optional_double_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -94,18 +88,6 @@ public extension HideConfig {
       if bridge.has_value_std__optional_std__string_(self.__outro) {
         let __unwrapped = bridge.get_std__optional_std__string_(self.__outro)
         return String(__unwrapped)
-      } else {
-        return nil
-      }
-    }()
-  }
-  
-  @inline(__always)
-  var outroDuration: Double? {
-    return { () -> Double? in
-      if bridge.has_value_std__optional_double_(self.__outroDuration) {
-        let __unwrapped = bridge.get_std__optional_double_(self.__outroDuration)
-        return __unwrapped
       } else {
         return nil
       }

@@ -154,37 +154,4 @@ open class HybridSplashMotionModuleSpec_cxx {
       return bridge.create_Result_bool_(__exceptionPtr)
     }
   }
-  
-  @inline(__always)
-  public final func setNumber(name: std.string, value: Double) -> bridge.Result_void_ {
-    do {
-      try self.__implementation.setNumber(name: String(name), value: value)
-      return bridge.create_Result_void_()
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_void_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
-  public final func setBoolean(name: std.string, value: Bool) -> bridge.Result_void_ {
-    do {
-      try self.__implementation.setBoolean(name: String(name), value: value)
-      return bridge.create_Result_void_()
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_void_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
-  public final func trigger(name: std.string) -> bridge.Result_void_ {
-    do {
-      try self.__implementation.trigger(name: String(name))
-      return bridge.create_Result_void_()
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_void_(__exceptionPtr)
-    }
-  }
 }

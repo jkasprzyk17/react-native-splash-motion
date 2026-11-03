@@ -86,24 +86,6 @@ namespace margelo::nitro::splashmotion {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void setNumber(const std::string& name, double value) override {
-      auto __result = _swiftPart.setNumber(name, std::forward<decltype(value)>(value));
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-    }
-    inline void setBoolean(const std::string& name, bool value) override {
-      auto __result = _swiftPart.setBoolean(name, std::forward<decltype(value)>(value));
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-    }
-    inline void trigger(const std::string& name) override {
-      auto __result = _swiftPart.trigger(name);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-    }
 
   private:
     RNSplashMotion::HybridSplashMotionModuleSpec_cxx _swiftPart;

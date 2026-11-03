@@ -15,9 +15,6 @@ public protocol HybridSplashMotionModuleSpec_protocol: HybridObject {
   // Methods
   func hide(config: HideConfig) throws -> Promise<Void>
   func isVisible() throws -> Bool
-  func setNumber(name: String, value: Double) throws -> Void
-  func setBoolean(name: String, value: Bool) throws -> Void
-  func trigger(name: String) throws -> Void
 }
 
 public extension HybridSplashMotionModuleSpec_protocol {

@@ -29,10 +29,7 @@ data class HideConfig(
   val waitForLoop: Boolean?,
   @DoNotStrip
   @Keep
-  val outro: String?,
-  @DoNotStrip
-  @Keep
-  val outroDuration: Double?
+  val outro: String?
 ) {
   /* primary constructor */
 
@@ -43,7 +40,6 @@ data class HideConfig(
       && Objects.deepEquals(this.minDuration, other.minDuration)
       && Objects.deepEquals(this.waitForLoop, other.waitForLoop)
       && Objects.deepEquals(this.outro, other.outro)
-      && Objects.deepEquals(this.outroDuration, other.outroDuration)
   }
 
   override fun hashCode(): Int {
@@ -51,8 +47,7 @@ data class HideConfig(
       fade,
       minDuration,
       waitForLoop,
-      outro,
-      outroDuration
+      outro
     ).contentDeepHashCode()
   }
 
@@ -64,8 +59,8 @@ data class HideConfig(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(fade: Double?, minDuration: Double?, waitForLoop: Boolean?, outro: String?, outroDuration: Double?): HideConfig {
-      return HideConfig(fade, minDuration, waitForLoop, outro, outroDuration)
+    private fun fromCpp(fade: Double?, minDuration: Double?, waitForLoop: Boolean?, outro: String?): HideConfig {
+      return HideConfig(fade, minDuration, waitForLoop, outro)
     }
   }
 }

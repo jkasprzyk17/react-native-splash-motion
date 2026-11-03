@@ -56,9 +56,6 @@ namespace margelo::nitro::splashmotion {
     // Methods
     std::shared_ptr<Promise<void>> hide(const HideConfig& config) override;
     bool isVisible() override;
-    void setNumber(const std::string& name, double value) override;
-    void setBoolean(const std::string& name, bool value) override;
-    void trigger(const std::string& name) override;
 
   private:
     jni::global_ref<JHybridSplashMotionModuleSpec::JavaPart> _javaPart;
