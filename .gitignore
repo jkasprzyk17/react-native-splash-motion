@@ -73,4 +73,6 @@ ios/generated
 android/generated
 
 # React Native Nitro Modules
-nitrogen/
+# nitrogen/generated is committed on purpose: Android/iOS builds of the example
+# need it, and Yarn 4 doesn't run `prepare` on install to regenerate it.
+# Re-run `yarn nitrogen` after changing any *.nitro.ts spec.
