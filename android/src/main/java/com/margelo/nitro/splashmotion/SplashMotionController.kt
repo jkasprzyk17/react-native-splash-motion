@@ -24,7 +24,7 @@ internal object SplashMotionController {
 
   // Main-thread state
   private var installed = false
-  private var overlay: FrameLayout? = null
+  private var overlay: SplashOverlay? = null
   private var player: SplashPlayer? = null
   private var shownAt = 0L
   private var hiding = false
@@ -66,20 +66,13 @@ internal object SplashMotionController {
     val player = createPlayer(activity, config.type) ?: return abort()
 
     val density = activity.resources.displayMetrics.density
-    val overlay = FrameLayout(activity).apply {
+    val overlay = SplashOverlay(activity, (config.width * density).toFloat(), (config.height * density).toFloat()).apply {
       setBackgroundColor(activity.getColor(R.color.splashmotion_background))
       isClickable = true // swallow touches while visible
       isFocusable = true
       translationZ = 10_000f
     }
-    overlay.addView(
-      player.view,
-      FrameLayout.LayoutParams(
-        (config.width * density).toInt(),
-        (config.height * density).toInt(),
-        Gravity.CENTER,
-      ),
-    )
+    overlay.addView(player.view, FrameLayout.LayoutParams(0, 0, Gravity.CENTER))
     (activity.window.decorView as ViewGroup).addView(
       overlay,
       ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
@@ -187,4 +180,30 @@ internal object SplashMotionController {
   fun trigger(name: String) = main.post { player?.trigger(name) }
 
   // endregion
+}
+
+/** Keep in sync with `maxScreenFraction` (iOS) and the CLI's launch storyboard. */
+private const val MAX_SCREEN_FRACTION = 0.9f
+
+/**
+ * Centers the animation at its configured size, scaled down (keeping the aspect
+ * ratio) to fit 90% of the overlay. Re-measured on rotation and resize.
+ */
+internal class SplashOverlay(
+  context: Context,
+  private val widthPx: Float,
+  private val heightPx: Float,
+) : FrameLayout(context) {
+  override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+    val maxWidth = MeasureSpec.getSize(widthMeasureSpec) * MAX_SCREEN_FRACTION
+    val maxHeight = MeasureSpec.getSize(heightMeasureSpec) * MAX_SCREEN_FRACTION
+    var scale = 1f
+    if (maxWidth > 0) scale = minOf(scale, maxWidth / widthPx)
+    if (maxHeight > 0) scale = minOf(scale, maxHeight / heightPx)
+    getChildAt(0)?.layoutParams?.let {
+      it.width = (widthPx * scale).toInt()
+      it.height = (heightPx * scale).toInt()
+    }
+    super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+  }
 }
