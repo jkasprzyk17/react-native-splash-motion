@@ -3,10 +3,10 @@
   "file": "animation.json",
   "width": 200,
   "height": 200,
-  "background": "#0F6E56",
-  "darkBackground": "#04342C",
+  "background": "#FFFFFF",
+  "darkBackground": null,
   "loop": true,
-  "loopMarker": "loop",
+  "loopMarker": null,
   "stateMachine": null,
   "artboard": null
 }
