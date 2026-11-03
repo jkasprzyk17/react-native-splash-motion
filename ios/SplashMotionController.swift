@@ -40,7 +40,7 @@ final class SplashMotionController {
       return true
     }
     guard let data = SplashMotionConfig.animationData(),
-          let player = makePlayer(config: config, data: data) else {
+          let player = LottieSplashPlayer(data: data, config: config) else {
       return true
     }
 
@@ -75,23 +75,6 @@ final class SplashMotionController {
     return true
   }
 
-  private func makePlayer(config: SplashMotionConfig, data: Data) -> SplashPlayer? {
-    if config.type == "rive" {
-      #if canImport(RiveRuntime)
-      return RiveSplashPlayer(data: data, config: config)
-      #else
-      NSLog("[SplashMotion] This is a Rive splash but RiveRuntime isn't linked. Run `pod install` again.")
-      return nil
-      #endif
-    }
-    #if canImport(Lottie)
-    return LottieSplashPlayer(data: data, config: config)
-    #else
-    NSLog("[SplashMotion] This is a Lottie splash but lottie-ios isn't linked. Run `pod install` again.")
-    return nil
-    #endif
-  }
-
   // MARK: Hiding
 
   func hide(
@@ -99,7 +82,6 @@ final class SplashMotionController {
     minDuration: Double,
     waitForLoop: Bool,
     outro: String?,
-    outroDuration: Double,
     completion: @escaping () -> Void
   ) {
     DispatchQueue.main.async {
@@ -114,12 +96,12 @@ final class SplashMotionController {
       let elapsed = Date().timeIntervalSince(self.shownAt) * 1000
       let delay = max(0, minDuration - elapsed) / 1000
       DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-        self.runExit(fade: fade, waitForLoop: waitForLoop, outro: outro, outroDuration: outroDuration)
+        self.runExit(fade: fade, waitForLoop: waitForLoop, outro: outro)
       }
     }
   }
 
-  private func runExit(fade: Double, waitForLoop: Bool, outro: String?, outroDuration: Double) {
+  private func runExit(fade: Double, waitForLoop: Bool, outro: String?) {
     guard let player else {
       dismiss(fade: fade)
       return
@@ -127,7 +109,7 @@ final class SplashMotionController {
     let afterLoop = { [weak self] in
       guard let self else { return }
       if let outro,
-         player.playOutro(outro, duration: outroDuration / 1000, completion: { [weak self] in
+         player.playOutro(outro, completion: { [weak self] in
            self?.dismiss(fade: fade)
          }) {
         return
@@ -172,19 +154,5 @@ final class SplashMotionController {
     pending.removeAll()
     hiding = false
     callbacks.forEach { $0() }
-  }
-
-  // MARK: Inputs
-
-  func setNumber(_ name: String, _ value: Double) {
-    DispatchQueue.main.async { self.player?.setNumber(name, value) }
-  }
-
-  func setBoolean(_ name: String, _ value: Bool) {
-    DispatchQueue.main.async { self.player?.setBoolean(name, value) }
-  }
-
-  func trigger(_ name: String) {
-    DispatchQueue.main.async { self.player?.trigger(name) }
   }
 }

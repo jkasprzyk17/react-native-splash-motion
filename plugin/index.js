@@ -8,7 +8,7 @@
  *     "background": "#0F6E56"
  *   }]]
  *
- * `source` can be a Lottie .json, a dotLottie .lottie or a Rive .riv file.
+ * `source` can be a Lottie .json or a dotLottie .lottie file.
  */
 const core = require('../cli/core');
 

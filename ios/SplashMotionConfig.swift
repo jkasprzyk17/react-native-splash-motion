@@ -3,15 +3,12 @@ import UIKit
 /// Build-time configuration written by `npx splash-motion generate` (or the Expo
 /// plugin) into the app's asset catalog as the `SplashMotionConfig` data asset.
 struct SplashMotionConfig: Decodable {
-  let type: String
   let width: Double
   let height: Double
   let background: String
   let darkBackground: String?
   let loop: Bool?
   let loopMarker: String?
-  let stateMachine: String?
-  let artboard: String?
 
   static func load() -> SplashMotionConfig? {
     guard let asset = NSDataAsset(name: "SplashMotionConfig") else { return nil }

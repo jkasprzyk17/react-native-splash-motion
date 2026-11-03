@@ -10,6 +10,7 @@ import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.margelo.nitro.splashmotion.players.LottieSplashPlayer
 
 /**
  * Owns the native overlay. The system splash stays on screen until the
@@ -63,7 +64,7 @@ internal object SplashMotionController {
       Log.e(TAG, "Could not read the animation file.", e)
       return abort()
     }
-    val player = createPlayer(activity, config.type) ?: return abort()
+    val player = LottieSplashPlayer(activity)
 
     val density = activity.resources.displayMetrics.density
     val overlay = SplashOverlay(activity, (config.width * density).toFloat(), (config.height * density).toFloat()).apply {
@@ -88,20 +89,6 @@ internal object SplashMotionController {
     visible = false
   }
 
-  private fun createPlayer(context: Context, type: String): SplashPlayer? {
-    val className = if (type == "rive") {
-      "com.margelo.nitro.splashmotion.players.RiveSplashPlayer"
-    } else {
-      "com.margelo.nitro.splashmotion.players.LottieSplashPlayer"
-    }
-    return try {
-      Class.forName(className).getConstructor(Context::class.java).newInstance(context) as SplashPlayer
-    } catch (e: Throwable) {
-      Log.e(TAG, "The $type renderer isn't compiled in. Rebuild the app after `npx splash-motion generate`.", e)
-      null
-    }
-  }
-
   // endregion
 
   // region Hiding
@@ -111,7 +98,6 @@ internal object SplashMotionController {
     minDuration: Long,
     waitForLoop: Boolean,
     outro: String?,
-    outroDuration: Long,
     done: () -> Unit,
   ) {
     main.post {
@@ -126,16 +112,16 @@ internal object SplashMotionController {
 
       val elapsed = SystemClock.uptimeMillis() - shownAt
       main.postDelayed(
-        { runExit(fade, waitForLoop, outro, outroDuration) },
+        { runExit(fade, waitForLoop, outro) },
         (minDuration - elapsed).coerceAtLeast(0),
       )
     }
   }
 
-  private fun runExit(fade: Long, waitForLoop: Boolean, outro: String?, outroDuration: Long) {
+  private fun runExit(fade: Long, waitForLoop: Boolean, outro: String?) {
     val player = this.player ?: return dismiss(fade)
     val afterLoop = Runnable {
-      val playing = outro != null && player.playOutro(outro, outroDuration) { dismiss(fade) }
+      val playing = outro != null && player.playOutro(outro) { dismiss(fade) }
       if (!playing) dismiss(fade)
     }
     if (waitForLoop) {
@@ -168,16 +154,6 @@ internal object SplashMotionController {
     hiding = false
     callbacks.forEach { it() }
   }
-
-  // endregion
-
-  // region Inputs
-
-  fun setNumber(name: String, value: Double) = main.post { player?.setNumber(name, value) }
-
-  fun setBoolean(name: String, value: Boolean) = main.post { player?.setBoolean(name, value) }
-
-  fun trigger(name: String) = main.post { player?.trigger(name) }
 
   // endregion
 }

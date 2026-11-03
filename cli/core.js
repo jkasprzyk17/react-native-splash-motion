@@ -130,7 +130,7 @@ function readDotLottie(file) {
 /** Reads the animation and resolves the final, normalized config. */
 function resolveOptions(projectRoot, options) {
   if (!options.source) {
-    throw new Error(`${LOG} Missing animation file. Usage: npx splash-motion generate <file.json|file.lottie|file.riv>`);
+    throw new Error(`${LOG} Missing animation file. Usage: npx splash-motion generate <file.json|file.lottie>`);
   }
   const source = path.resolve(projectRoot, options.source);
   if (!fs.existsSync(source)) {
@@ -138,8 +138,7 @@ function resolveOptions(projectRoot, options) {
   }
 
   const ext = path.extname(source).toLowerCase();
-  let type = 'lottie';
-  let lottie = null;
+  let lottie;
   if (ext === '.json') {
     try {
       lottie = JSON.parse(fs.readFileSync(source, 'utf8'));
@@ -148,13 +147,11 @@ function resolveOptions(projectRoot, options) {
     }
   } else if (ext === '.lottie') {
     lottie = readDotLottie(source);
-  } else if (ext === '.riv') {
-    type = 'rive';
   } else {
-    throw new Error(`${LOG} Unsupported file type "${ext}". Use a Lottie .json, a dotLottie .lottie or a Rive .riv file.`);
+    throw new Error(`${LOG} Unsupported file type "${ext}". Use a Lottie .json or a dotLottie .lottie file.`);
   }
-  const ratio = lottie && lottie.w && lottie.h ? lottie.h / lottie.w : 1;
-  // .json and .riv are copied as-is; a .lottie ships as the plain JSON unpacked above.
+  const ratio = lottie.w && lottie.h ? lottie.h / lottie.w : 1;
+  // A .json is copied as-is; a .lottie ships as the plain JSON unpacked above.
   const data = ext === '.lottie' ? Buffer.from(JSON.stringify(lottie)) : fs.readFileSync(source);
 
   const width = Number(options.width ?? 160);
@@ -176,7 +173,6 @@ function resolveOptions(projectRoot, options) {
   return {
     source,
     data,
-    type,
     width,
     height,
     background,
@@ -184,14 +180,11 @@ function resolveOptions(projectRoot, options) {
     still,
     loop: options.loop !== false,
     loopMarker: options.loopMarker || null,
-    stateMachine: options.stateMachine || null,
-    artboard: options.artboard || null,
   };
 }
 
 function runtimeConfig(o, file) {
   return {
-    type: o.type,
     file,
     width: o.width,
     height: o.height,
@@ -199,8 +192,6 @@ function runtimeConfig(o, file) {
     darkBackground: o.darkBackground ? o.darkBackground.hex : null,
     loop: o.loop,
     loopMarker: o.loopMarker,
-    stateMachine: o.stateMachine,
-    artboard: o.artboard,
   };
 }
 
@@ -329,7 +320,7 @@ function generateIos(projectRoot, o) {
   }
   writeJson(path.join(assets, 'SplashMotionBackground.colorset', 'Contents.json'), { colors, info });
 
-  const animFile = o.type === 'rive' ? 'animation.riv' : 'animation.json';
+  const animFile = 'animation.json';
   const animDir = path.join(assets, 'SplashMotionAnimation.dataset');
   fs.rmSync(animDir, { recursive: true, force: true });
   write(path.join(animDir, animFile), o.data);
@@ -338,7 +329,7 @@ function generateIos(projectRoot, o) {
       {
         'filename': animFile,
         'idiom': 'universal',
-        'universal-type-identifier': o.type === 'rive' ? 'public.data' : 'public.json',
+        'universal-type-identifier': 'public.json',
       },
     ],
     info,
@@ -390,7 +381,7 @@ function generateAndroidFiles(projectRoot, o) {
 
   const assetsDir = path.join(main, 'assets', 'splashmotion');
   fs.rmSync(assetsDir, { recursive: true, force: true });
-  const animFile = o.type === 'rive' ? 'animation.riv' : 'animation.json';
+  const animFile = 'animation.json';
   write(path.join(assetsDir, animFile), o.data);
   writeJson(path.join(assetsDir, 'config.json'), runtimeConfig(o, animFile));
 

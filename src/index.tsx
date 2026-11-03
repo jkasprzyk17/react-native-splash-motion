@@ -24,26 +24,6 @@ function isVisible(): boolean {
 }
 
 /**
- * Rive only: drive a state machine input while the app is loading.
- *
- * @example
- * SplashMotion.setInput('progress', 0.42); // number input
- * SplashMotion.setInput('isDark', true);   // boolean input
- */
-function setInput(name: string, value: number | boolean): void {
-  if (typeof value === 'boolean') {
-    native.setBoolean(name, value);
-  } else {
-    native.setNumber(name, value);
-  }
-}
-
-/** Rive only: fire a trigger input. */
-function trigger(name: string): void {
-  native.trigger(name);
-}
-
-/**
  * Hide the splash as soon as `ready` becomes `true`.
  *
  * @example
@@ -64,7 +44,7 @@ export function useHideSplash(
   }, [ready]);
 }
 
-const SplashMotion = { hide, isVisible, setInput, trigger };
+const SplashMotion = { hide, isVisible };
 
-export { hide, isVisible, setInput, trigger };
+export { hide, isVisible };
 export default SplashMotion;

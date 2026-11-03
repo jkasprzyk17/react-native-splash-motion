@@ -8,7 +8,7 @@ const HELP = `
   Usage: npx splash-motion generate <animation> [options]
 
   Generates everything your app needs to show a native animated splash.
-  <animation> is a Lottie .json, a dotLottie .lottie or a Rive .riv file.
+  <animation> is a Lottie .json or a dotLottie .lottie file.
 
   Options:
     --background <hex>        Background color              (default: #FFFFFF)
@@ -18,10 +18,8 @@ const HELP = `
                               Scaled down at runtime to fit 90% of the screen
     --still <png>             Optional image shown by the iOS launch screen
                               (use your animation's first frame)
-    --loop-marker <name>      Lottie: only loop this marker's range
+    --loop-marker <name>      Only loop this marker's range
     --no-loop                 Play once and hold the last frame
-    --state-machine <name>    Rive: state machine           (default: "State Machine 1")
-    --artboard <name>         Rive: artboard                (default: first one)
     --platforms <list>        ios,android                   (default: both)
     --project-root <path>     Your app's root folder        (default: current directory)
 
@@ -70,7 +68,7 @@ function main() {
   const platforms = String(flags.platforms ?? 'ios,android').split(',').map((p) => p.trim());
   const options = core.resolveOptions(projectRoot, { ...flags, source });
 
-  console.log(`\n✨ SplashMotion — ${options.type === 'rive' ? 'Rive' : 'Lottie'} splash (${options.width}×${options.height})\n`);
+  console.log(`\n✨ SplashMotion — Lottie splash (${options.width}×${options.height})\n`);
 
   if (platforms.includes('ios')) {
     const { storyboard } = core.generateIos(projectRoot, options);

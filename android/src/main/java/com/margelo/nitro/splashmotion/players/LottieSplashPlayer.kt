@@ -41,7 +41,7 @@ internal class LottieSplashPlayer(context: Context) : SplashPlayer {
     return (framesLeft / composition.frameRate * 1000f / speed).toLong()
   }
 
-  override fun playOutro(name: String, durationMs: Long, onEnd: () -> Unit): Boolean {
+  override fun playOutro(name: String, onEnd: () -> Unit): Boolean {
     val composition = lottie.composition ?: return false
     composition.getMarker(name) ?: return false
 

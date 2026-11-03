@@ -1,4 +1,3 @@
-#if canImport(Lottie)
 import Lottie
 import UIKit
 
@@ -50,7 +49,7 @@ final class LottieSplashPlayer: SplashPlayer {
     return framesLeft / animation.framerate / speed
   }
 
-  func playOutro(_ name: String, duration: TimeInterval, completion: @escaping () -> Void) -> Bool {
+  func playOutro(_ name: String, completion: @escaping () -> Void) -> Bool {
     guard let outro = range(of: name) else { return false }
     animationView.play(fromFrame: outro.start, toFrame: outro.end, loopMode: .playOnce) { _ in
       completion()
@@ -58,12 +57,7 @@ final class LottieSplashPlayer: SplashPlayer {
     return true
   }
 
-  func setNumber(_ name: String, _ value: Double) {}
-  func setBoolean(_ name: String, _ value: Bool) {}
-  func trigger(_ name: String) {}
-
   func stop() {
     animationView.stop()
   }
 }
-#endif

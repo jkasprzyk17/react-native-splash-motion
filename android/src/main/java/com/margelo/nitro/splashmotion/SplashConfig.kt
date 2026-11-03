@@ -5,14 +5,11 @@ import org.json.JSONObject
 
 /** Build-time config written by `npx splash-motion generate` into `assets/splashmotion/`. */
 internal data class SplashConfig(
-  val type: String,
   val file: String,
   val width: Double,
   val height: Double,
   val loop: Boolean,
   val loopMarker: String?,
-  val stateMachine: String?,
-  val artboard: String?,
 ) {
   companion object {
     private fun JSONObject.optStringOrNull(key: String): String? =
@@ -22,14 +19,11 @@ internal data class SplashConfig(
       val text = context.assets.open("splashmotion/config.json").bufferedReader().use { it.readText() }
       val json = JSONObject(text)
       SplashConfig(
-        type = json.optString("type", "lottie"),
         file = json.getString("file"),
         width = json.optDouble("width", 160.0),
         height = json.optDouble("height", 160.0),
         loop = json.optBoolean("loop", true),
         loopMarker = json.optStringOrNull("loopMarker"),
-        stateMachine = json.optStringOrNull("stateMachine"),
-        artboard = json.optStringOrNull("artboard"),
       )
     } catch (e: Exception) {
       null

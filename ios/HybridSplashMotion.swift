@@ -8,8 +8,7 @@ class HybridSplashMotion: HybridSplashMotionModuleSpec {
       fade: config.fade ?? 220,
       minDuration: config.minDuration ?? 0,
       waitForLoop: config.waitForLoop ?? true,
-      outro: config.outro,
-      outroDuration: config.outroDuration ?? 600
+      outro: config.outro
     ) {
       promise.resolve(withResult: ())
     }
@@ -18,17 +17,5 @@ class HybridSplashMotion: HybridSplashMotionModuleSpec {
 
   func isVisible() throws -> Bool {
     SplashMotionController.shared.isVisible
-  }
-
-  func setNumber(name: String, value: Double) throws {
-    SplashMotionController.shared.setNumber(name, value)
-  }
-
-  func setBoolean(name: String, value: Bool) throws {
-    SplashMotionController.shared.setBoolean(name, value)
-  }
-
-  func trigger(name: String) throws {
-    SplashMotionController.shared.trigger(name)
   }
 }

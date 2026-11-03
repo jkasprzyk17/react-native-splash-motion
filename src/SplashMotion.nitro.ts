@@ -11,21 +11,12 @@ export interface HideConfig {
   minDuration?: number;
   /** Let the current loop finish instead of cutting the animation mid-way. Default: `true`. */
   waitForLoop?: boolean;
-  /**
-   * Play an outro before leaving.
-   * - Lottie: name of a marker in your animation (e.g. `"outro"`).
-   * - Rive: name of a trigger input in your state machine.
-   */
+  /** Play an outro before leaving: the name of a marker in your animation (e.g. `"outro"`). */
   outro?: string;
-  /** Rive only: how long the outro lasts (ms). Default: `600`. */
-  outroDuration?: number;
 }
 
 export interface SplashMotionModule
   extends HybridObject<{ ios: 'swift'; android: 'kotlin' }> {
   hide(config: HideConfig): Promise<void>;
   isVisible(): boolean;
-  setNumber(name: string, value: number): void;
-  setBoolean(name: string, value: boolean): void;
-  trigger(name: string): void;
 }
