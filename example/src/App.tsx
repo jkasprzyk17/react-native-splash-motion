@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import SplashMotion from 'react-native-splash-motion';
 
 // Pretend the app needs ~2.5s to boot (fonts, auth, remote config…).
 const fakeBoot = () =>
-  new Promise<void>((resolve) => setTimeout(resolve, 2500));
+  new Promise<void>((resolve) => setTimeout(resolve, 1500));
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -24,12 +24,6 @@ export default function App() {
       <Text style={styles.subtitle}>
         {ready ? 'Your app is ready 🎉' : 'Booting…'}
       </Text>
-      <Pressable
-        style={styles.button}
-        onPress={() => console.log('visible:', SplashMotion.isVisible())}
-      >
-        <Text style={styles.buttonText}>Log isVisible()</Text>
-      </Pressable>
     </View>
   );
 }
