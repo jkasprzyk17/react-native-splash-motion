@@ -12,7 +12,6 @@ const HELP = `
 
   Options:
     --background <hex>        Background color              (default: #FFFFFF)
-    --dark-background <hex>   Background color in dark mode
     --width <number>          Animation width in dp/pt      (default: 160)
     --height <number>         Animation height in dp/pt     (default: keeps aspect ratio)
                               Scaled down at runtime to fit 90% of the screen

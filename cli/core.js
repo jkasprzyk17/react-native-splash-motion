@@ -222,9 +222,6 @@ function resolveOptions(projectRoot, options) {
   }
 
   const background = parseHex(options.background ?? '#FFFFFF');
-  const darkBackground = options.darkBackground
-    ? parseHex(options.darkBackground)
-    : null;
   const still = options.still ? path.resolve(projectRoot, options.still) : null;
   if (still && !fs.existsSync(still)) {
     throw new Error(`${LOG} Still image not found: ${still}`);
@@ -245,7 +242,6 @@ function resolveOptions(projectRoot, options) {
     width,
     height,
     background,
-    darkBackground,
     still,
     loop: options.loop !== false,
     loopMarker: options.loopMarker || null,
@@ -258,7 +254,6 @@ function runtimeConfig(o, file) {
     width: o.width,
     height: o.height,
     background: o.background.hex,
-    darkBackground: o.darkBackground ? o.darkBackground.hex : null,
     loop: o.loop,
     loopMarker: o.loopMarker,
   };
@@ -312,7 +307,7 @@ function launchStoryboard(o) {
   const c = o.background;
   // The background is a plain sRGB color: iOS doesn't resolve named asset-catalog
   // colors on the launch screen (neither here nor in UILaunchScreen) and shows
-  // its own blue instead. That also means no dark-mode variant before launch.
+  // its own blue instead.
   const image = o.still
     ? `
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="SplashMotionStill" translatesAutoresizingMaskIntoConstraints="NO" id="lsI-mg-001">
@@ -367,7 +362,7 @@ function launchStoryboard(o) {
 /**
  * iOS output (no Xcode project edits needed — everything lives in files that
  * are already part of the project):
- * - Images.xcassets/SplashMotionBackground.colorset  (light + dark)
+ * - Images.xcassets/SplashMotionBackground.colorset  (overlay background)
  * - Images.xcassets/SplashMotionConfig.dataset       (runtime config)
  * - Images.xcassets/SplashMotionAnimation.dataset    (the animation)
  * - Images.xcassets/SplashMotionStill.imageset       (optional)
@@ -386,13 +381,6 @@ function generateIos(projectRoot, o) {
   const info = { author: 'react-native-splash-motion', version: 1 };
 
   const colors = [{ idiom: 'universal', color: colorComponents(o.background) }];
-  if (o.darkBackground) {
-    colors.push({
-      idiom: 'universal',
-      appearances: [{ appearance: 'luminosity', value: 'dark' }],
-      color: colorComponents(o.darkBackground),
-    });
-  }
   writeJson(
     path.join(assets, 'SplashMotionBackground.colorset', 'Contents.json'),
     { colors, info }
@@ -439,12 +427,6 @@ function generateIos(projectRoot, o) {
     });
   }
 
-  if (o.darkBackground) {
-    console.warn(
-      `${LOG} iOS can't switch the launch screen color for dark mode, so it uses ${o.background.hex} ` +
-        `before the animation starts, then ${o.darkBackground.hex} in dark mode.`
-    );
-  }
   const storyboard = path.join(app.dir, `${app.storyboardName}.storyboard`);
   write(storyboard, launchStoryboard(o));
 
@@ -514,14 +496,6 @@ function generateAndroidFiles(projectRoot, o) {
     path.join(main, 'res', 'values', 'splashmotion_colors.xml'),
     colorsXml(o.background.hex)
   );
-  const night = path.join(
-    main,
-    'res',
-    'values-night',
-    'splashmotion_colors.xml'
-  );
-  if (o.darkBackground) write(night, colorsXml(o.darkBackground.hex));
-  else fs.rmSync(night, { force: true });
 
   const icon = path.join(main, 'res', 'drawable', 'splashmotion_icon.xml');
   const iconV31 = path.join(

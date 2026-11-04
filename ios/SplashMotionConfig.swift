@@ -6,7 +6,6 @@ struct SplashMotionConfig: Decodable {
   let width: Double
   let height: Double
   let background: String
-  let darkBackground: String?
   let loop: Bool?
   let loopMarker: String?
 
@@ -19,8 +18,7 @@ struct SplashMotionConfig: Decodable {
     NSDataAsset(name: "SplashMotionAnimation")?.data
   }
 
-  /// Named color generated in the asset catalog (supports dark mode),
-  /// falling back to the raw hex value.
+  /// Named color generated in the asset catalog, falling back to the raw hex value.
   var backgroundColor: UIColor {
     if let named = UIColor(named: "SplashMotionBackground") { return named }
     return UIColor(splashMotionHex: background) ?? .white

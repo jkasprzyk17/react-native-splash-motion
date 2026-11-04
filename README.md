@@ -110,7 +110,6 @@ Remove `expo-splash-screen` (SplashMotion replaces it), then add the plugin:
         {
           "source": "./assets/splash.json",
           "background": "#0F6E56",
-          "darkBackground": "#04342C",
           "width": 200
         }
       ]
@@ -176,7 +175,6 @@ npx splash-motion generate <animation> [options]
   <animation>               A Lottie .json or a dotLottie .lottie file
 
   --background <hex>        Background color              (default: #FFFFFF)
-  --dark-background <hex>   Background color in dark mode
   --width <number>          Animation width in dp/pt      (default: 160)
   --height <number>         Animation height in dp/pt     (default: keeps aspect ratio)
                             Scaled down at runtime to fit 90% of the screen
@@ -186,9 +184,7 @@ npx splash-motion generate <animation> [options]
   --platforms <list>        ios,android                   (default: both)
 ```
 
-The Expo plugin accepts the same options in camelCase (`darkBackground`, `loopMarker`, …) plus `source`.
-
-> **Dark mode on iOS:** the launch screen can only use a fixed color (iOS ignores asset-catalog colors there), so before the animation starts iOS always shows `--background`; the animation then switches to `--dark-background`. Android uses the dark color from the first frame.
+The Expo plugin accepts the same options in camelCase (`loopMarker`, …) plus `source`.
 
 ## Designing your animation
 
@@ -233,6 +229,7 @@ jest.mock('react-native-splash-motion', () => ({
 ## Roadmap
 
 - Automatic first-frame extraction for `--still`
+- Dark-mode background (`--dark-background`) that stays seamless on iOS too
 - Per-platform animations and sizes
 
 ## Contributing
