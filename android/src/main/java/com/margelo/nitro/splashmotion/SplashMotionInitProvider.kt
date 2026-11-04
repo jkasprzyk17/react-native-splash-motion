@@ -20,11 +20,10 @@ class SplashMotionInitProvider : ContentProvider() {
     val app = context?.applicationContext as? Application ?: return true
     SplashMotionController.preload(app)
     app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+      // Every ReactActivity, not just the first: one reopened after Back or
+      // recreated still starts on the splash theme and needs to leave it.
       private fun handle(activity: Activity) {
-        if (activity is ReactActivity) {
-          SplashMotionController.install(activity)
-          app.unregisterActivityLifecycleCallbacks(this)
-        }
+        if (activity is ReactActivity) SplashMotionController.install(activity)
       }
 
       // API 29+: runs before Activity.onCreate — the ideal moment.

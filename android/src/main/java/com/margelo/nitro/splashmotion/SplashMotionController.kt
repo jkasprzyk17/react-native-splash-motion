@@ -66,10 +66,18 @@ internal object SplashMotionController {
   }
 
   fun install(activity: Activity) {
-    if (installed) return
+    // Every ReactActivity starts on the splash theme, so each one must install the
+    // splash screen to switch to its post-splash theme; skipping it crashes
+    // AppCompat ("You need to use a Theme.AppCompat theme").
+    val splash = activity.installSplashScreen()
+    if (installed) {
+      // A later Activity in the same process: reopened after Back (React Native is
+      // already running, so no animation) or recreated while the splash is up.
+      main.post { moveOverlay(activity) }
+      return
+    }
     installed = true
 
-    val splash = activity.installSplashScreen()
     val config = preloadedConfig ?: SplashConfig.load(activity)
     if (config == null) {
       Log.w(TAG, "No config found. Run `npx splash-motion generate <file>` and rebuild.")
@@ -126,6 +134,19 @@ internal object SplashMotionController {
       overlayReady = true
       if (splashGone) player.play()
     }
+  }
+
+  /** Moves a still-visible overlay to a recreated Activity (e.g. after rotation). */
+  private fun moveOverlay(activity: Activity) {
+    val overlay = overlay ?: return
+    (overlay.parent as? ViewGroup)?.removeView(overlay)
+    windowBackground = activity.window.decorView.background
+    window = activity.window
+    activity.window.setBackgroundDrawable(ColorDrawable(activity.getColor(R.color.splashmotion_background)))
+    (activity.window.decorView as ViewGroup).addView(
+      overlay,
+      ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+    )
   }
 
   private fun abort() {
