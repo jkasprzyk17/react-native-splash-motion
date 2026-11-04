@@ -57,7 +57,7 @@ Before your app's process is running, no code can play an animation: iOS shows i
 npx splash-motion generate assets/splash.json --background "#0F6E56" --still assets/splash-first-frame.png
 ```
 
-Export the frame from After Effects or LottieFiles. With `--loop-marker`, use the first frame of that marker instead, since that's where playback starts.
+Export the frame from After Effects or LottieFiles. With `--loop-marker`, use the first frame of that marker instead, since that's where playback starts. Automatic extraction (no PNG needed) is on the [roadmap](#roadmap); for now the PNG has to come from you.
 
 On Android the system splash only shows a centered circle 192dp wide, so keep the first frame's artwork inside that circle (or use a width of about 135dp or less to show all of it). Anything outside it appears as soon as the animation takes over.
 
