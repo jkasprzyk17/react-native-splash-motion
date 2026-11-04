@@ -39,7 +39,8 @@ function parseArgs(argv) {
     } else if (arg.startsWith('--')) {
       const [key, inline] = arg.slice(2).split('=');
       const value = inline ?? argv[++i];
-      if (value === undefined) throw new Error(`${core.LOG} Missing value for --${key}`);
+      if (value === undefined)
+        throw new Error(`${core.LOG} Missing value for --${key}`);
       flags[toCamel(key)] = value;
     } else {
       positional.push(arg);
@@ -61,18 +62,26 @@ function main() {
     return;
   }
   if (command !== 'generate') {
-    throw new Error(`${core.LOG} Unknown command "${command}". Run with --help.`);
+    throw new Error(
+      `${core.LOG} Unknown command "${command}". Run with --help.`
+    );
   }
 
   const projectRoot = path.resolve(flags.projectRoot ?? process.cwd());
-  const platforms = String(flags.platforms ?? 'ios,android').split(',').map((p) => p.trim());
+  const platforms = String(flags.platforms ?? 'ios,android')
+    .split(',')
+    .map((p) => p.trim());
   const options = core.resolveOptions(projectRoot, { ...flags, source });
 
-  console.log(`\n✨ SplashMotion — Lottie splash (${options.width}×${options.height})\n`);
+  console.log(
+    `\n✨ SplashMotion — Lottie splash (${options.width}×${options.height})\n`
+  );
 
   if (platforms.includes('ios')) {
     const { storyboard } = core.generateIos(projectRoot, options);
-    console.log(`  ✓ iOS      assets + ${path.relative(projectRoot, storyboard)}`);
+    console.log(
+      `  ✓ iOS      assets + ${path.relative(projectRoot, storyboard)}`
+    );
   }
   if (platforms.includes('android')) {
     core.generateAndroidFiles(projectRoot, options);

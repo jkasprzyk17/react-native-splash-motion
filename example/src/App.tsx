@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import SplashMotion from 'react-native-splash-motion';
 
 // Pretend the app needs ~2.5s to boot (fonts, auth, remote config…).
-const fakeBoot = () => new Promise((resolve) => setTimeout(resolve, 2500));
+const fakeBoot = () =>
+  new Promise<void>((resolve) => setTimeout(resolve, 2500));
 
 export default function App() {
   const [ready, setReady] = useState(false);

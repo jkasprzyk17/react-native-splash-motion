@@ -4,6 +4,7 @@
  * Shared asset generation used by both the CLI (`npx splash-motion generate`)
  * and the Expo config plugin. Zero dependencies.
  */
+const { Buffer } = require('buffer');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
@@ -15,9 +16,15 @@ const LOG = '[splash-motion]';
 
 function parseHex(hex) {
   let value = String(hex).trim().replace(/^#/, '');
-  if (value.length === 3) value = value.split('').map((c) => c + c).join('');
+  if (value.length === 3)
+    value = value
+      .split('')
+      .map((c) => c + c)
+      .join('');
   if (!/^[0-9a-fA-F]{6}$/.test(value)) {
-    throw new Error(`${LOG} Invalid color "${hex}". Use a hex value like #0F6E56.`);
+    throw new Error(
+      `${LOG} Invalid color "${hex}". Use a hex value like #0F6E56.`
+    );
   }
   const int = parseInt(value, 16);
   return {
@@ -37,7 +44,7 @@ function write(file, content) {
 function pngHasAlpha(buffer) {
   const colorType = buffer[25]; // IHDR, right after the 8-byte signature and chunk header
   if (colorType === 4 || colorType === 6) return true;
-  for (let offset = 8; offset + 8 <= buffer.length; ) {
+  for (let offset = 8; offset + 8 <= buffer.length;) {
     const length = buffer.readUInt32BE(offset);
     const type = buffer.toString('ascii', offset + 4, offset + 8);
     if (type === 'tRNS') return true;
@@ -57,7 +64,11 @@ function writeJson(file, data) {
 /** Minimal ZIP reader (stored + deflate entries), enough for .lottie archives. */
 function readZip(buffer) {
   let eocd = -1;
-  for (let i = buffer.length - 22; i >= Math.max(0, buffer.length - 22 - 0xffff); i--) {
+  for (
+    let i = buffer.length - 22;
+    i >= Math.max(0, buffer.length - 22 - 0xffff);
+    i--
+  ) {
     if (buffer.readUInt32LE(i) === 0x06054b50) {
       eocd = i;
       break;
@@ -68,14 +79,22 @@ function readZip(buffer) {
   const entries = new Map();
   let offset = buffer.readUInt32LE(eocd + 16);
   for (let n = buffer.readUInt16LE(eocd + 10); n > 0; n--) {
-    if (buffer.readUInt32LE(offset) !== 0x02014b50) throw new Error('corrupt ZIP directory');
+    if (buffer.readUInt32LE(offset) !== 0x02014b50)
+      throw new Error('corrupt ZIP directory');
     const nameLength = buffer.readUInt16LE(offset + 28);
-    entries.set(buffer.toString('utf8', offset + 46, offset + 46 + nameLength), {
-      method: buffer.readUInt16LE(offset + 10),
-      size: buffer.readUInt32LE(offset + 20),
-      header: buffer.readUInt32LE(offset + 42),
-    });
-    offset += 46 + nameLength + buffer.readUInt16LE(offset + 30) + buffer.readUInt16LE(offset + 32);
+    entries.set(
+      buffer.toString('utf8', offset + 46, offset + 46 + nameLength),
+      {
+        method: buffer.readUInt16LE(offset + 10),
+        size: buffer.readUInt32LE(offset + 20),
+        header: buffer.readUInt32LE(offset + 42),
+      }
+    );
+    offset +=
+      46 +
+      nameLength +
+      buffer.readUInt16LE(offset + 30) +
+      buffer.readUInt16LE(offset + 32);
   }
 
   return {
@@ -83,7 +102,11 @@ function readZip(buffer) {
     has: (name) => entries.has(name),
     read(name) {
       const { method, size, header } = entries.get(name);
-      const start = header + 30 + buffer.readUInt16LE(header + 26) + buffer.readUInt16LE(header + 28);
+      const start =
+        header +
+        30 +
+        buffer.readUInt16LE(header + 26) +
+        buffer.readUInt16LE(header + 28);
       const data = buffer.subarray(start, start + size);
       if (method === 0) return data;
       if (method === 8) return zlib.inflateRawSync(data);
@@ -92,7 +115,13 @@ function readZip(buffer) {
   };
 }
 
-const IMAGE_TYPES = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+const IMAGE_TYPES = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+};
 
 /**
  * Unpacks a .lottie (v1 or v2) into plain Lottie JSON. Uses the active (or first)
@@ -104,9 +133,12 @@ function readDotLottie(file) {
   let manifest = {};
   try {
     zip = readZip(fs.readFileSync(file));
-    if (zip.has('manifest.json')) manifest = JSON.parse(zip.read('manifest.json').toString('utf8'));
+    if (zip.has('manifest.json'))
+      manifest = JSON.parse(zip.read('manifest.json').toString('utf8'));
   } catch (error) {
-    throw new Error(`${LOG} ${name} is not a valid .lottie file (${error.message}).`);
+    throw new Error(
+      `${LOG} ${name} is not a valid .lottie file (${error.message}).`
+    );
   }
 
   const animations = manifest.animations ?? [];
@@ -114,20 +146,26 @@ function readDotLottie(file) {
   const entry =
     [`a/${id}.json`, `animations/${id}.json`].find((p) => id && zip.has(p)) ??
     zip.names.find((p) => /^(a|animations)\/[^/]+\.json$/.test(p));
-  if (!entry) throw new Error(`${LOG} ${name} doesn't contain a Lottie animation.`);
+  if (!entry)
+    throw new Error(`${LOG} ${name} doesn't contain a Lottie animation.`);
   if (animations.length > 1) {
-    console.warn(`${LOG} ${name} has ${animations.length} animations — using "${path.basename(entry, '.json')}".`);
+    console.warn(
+      `${LOG} ${name} has ${animations.length} animations — using "${path.basename(entry, '.json')}".`
+    );
   }
 
   let json;
   try {
     json = JSON.parse(zip.read(entry).toString('utf8'));
   } catch {
-    throw new Error(`${LOG} ${name} contains an invalid Lottie animation (${entry}).`);
+    throw new Error(
+      `${LOG} ${name} contains an invalid Lottie animation (${entry}).`
+    );
   }
 
   for (const asset of json.assets ?? []) {
-    if (!asset.p || asset.e === 1 || String(asset.p).startsWith('data:')) continue;
+    if (!asset.p || asset.e === 1 || String(asset.p).startsWith('data:'))
+      continue;
     const image = [`i/${asset.p}`, `images/${asset.p}`].find((p) => zip.has(p));
     if (!image) continue;
     const mime = IMAGE_TYPES[path.extname(image).toLowerCase()] ?? 'image/png';
@@ -144,7 +182,9 @@ function readDotLottie(file) {
 /** Reads the animation and resolves the final, normalized config. */
 function resolveOptions(projectRoot, options) {
   if (!options.source) {
-    throw new Error(`${LOG} Missing animation file. Usage: npx splash-motion generate <file.json|file.lottie>`);
+    throw new Error(
+      `${LOG} Missing animation file. Usage: npx splash-motion generate <file.json|file.lottie>`
+    );
   }
   const source = path.resolve(projectRoot, options.source);
   if (!fs.existsSync(source)) {
@@ -157,16 +197,23 @@ function resolveOptions(projectRoot, options) {
     try {
       lottie = JSON.parse(fs.readFileSync(source, 'utf8'));
     } catch {
-      throw new Error(`${LOG} ${path.basename(source)} is not a valid Lottie JSON file.`);
+      throw new Error(
+        `${LOG} ${path.basename(source)} is not a valid Lottie JSON file.`
+      );
     }
   } else if (ext === '.lottie') {
     lottie = readDotLottie(source);
   } else {
-    throw new Error(`${LOG} Unsupported file type "${ext}". Use a Lottie .json or a dotLottie .lottie file.`);
+    throw new Error(
+      `${LOG} Unsupported file type "${ext}". Use a Lottie .json or a dotLottie .lottie file.`
+    );
   }
   const ratio = lottie.w && lottie.h ? lottie.h / lottie.w : 1;
   // A .json is copied as-is; a .lottie ships as the plain JSON unpacked above.
-  const data = ext === '.lottie' ? Buffer.from(JSON.stringify(lottie)) : fs.readFileSync(source);
+  const data =
+    ext === '.lottie'
+      ? Buffer.from(JSON.stringify(lottie))
+      : fs.readFileSync(source);
 
   const width = Number(options.width ?? 160);
   const height = Number(options.height ?? Math.round(width * ratio));
@@ -175,7 +222,9 @@ function resolveOptions(projectRoot, options) {
   }
 
   const background = parseHex(options.background ?? '#FFFFFF');
-  const darkBackground = options.darkBackground ? parseHex(options.darkBackground) : null;
+  const darkBackground = options.darkBackground
+    ? parseHex(options.darkBackground)
+    : null;
   const still = options.still ? path.resolve(projectRoot, options.still) : null;
   if (still && !fs.existsSync(still)) {
     throw new Error(`${LOG} Still image not found: ${still}`);
@@ -222,16 +271,21 @@ function findIosApp(projectRoot) {
   const iosDir = path.join(projectRoot, 'ios');
   if (!fs.existsSync(iosDir)) return null;
   for (const entry of fs.readdirSync(iosDir)) {
-    if (entry === 'Pods' || entry === 'build' || entry.endsWith('Tests')) continue;
+    if (entry === 'Pods' || entry === 'build' || entry.endsWith('Tests'))
+      continue;
     const dir = path.join(iosDir, entry);
     const plist = path.join(dir, 'Info.plist');
     if (!fs.statSync(dir).isDirectory() || !fs.existsSync(plist)) continue;
     const content = fs.readFileSync(plist, 'utf8');
-    const match = content.match(/<key>UILaunchStoryboardName<\/key>\s*<string>([^<]+)<\/string>/);
+    const match = content.match(
+      /<key>UILaunchStoryboardName<\/key>\s*<string>([^<]+)<\/string>/
+    );
     const xcassets = fs.readdirSync(dir).find((f) => f.endsWith('.xcassets'));
     return {
       dir,
-      storyboardName: match ? match[1].replace(/\.storyboard$/, '') : 'LaunchScreen',
+      storyboardName: match
+        ? match[1].replace(/\.storyboard$/, '')
+        : 'LaunchScreen',
       xcassets: xcassets ? path.join(dir, xcassets) : null,
     };
   }
@@ -268,7 +322,9 @@ function launchStoryboard(o) {
                                 </constraints>
                             </imageView>`
     : '';
-  const subviews = image ? `\n                        <subviews>${image}\n                        </subviews>` : '';
+  const subviews = image
+    ? `\n                        <subviews>${image}\n                        </subviews>`
+    : '';
   const constraints = o.still
     ? `
                             <constraint firstItem="lsI-mg-001" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="lsC-x0-001"/>
@@ -319,8 +375,12 @@ function launchStoryboard(o) {
  */
 function generateIos(projectRoot, o) {
   const app = findIosApp(projectRoot);
-  if (!app) throw new Error(`${LOG} Could not find an iOS app folder with an Info.plist in ./ios`);
-  if (!app.xcassets) throw new Error(`${LOG} No .xcassets catalog found in ${app.dir}`);
+  if (!app)
+    throw new Error(
+      `${LOG} Could not find an iOS app folder with an Info.plist in ./ios`
+    );
+  if (!app.xcassets)
+    throw new Error(`${LOG} No .xcassets catalog found in ${app.dir}`);
 
   const assets = app.xcassets;
   const info = { author: 'react-native-splash-motion', version: 1 };
@@ -333,7 +393,10 @@ function generateIos(projectRoot, o) {
       color: colorComponents(o.darkBackground),
     });
   }
-  writeJson(path.join(assets, 'SplashMotionBackground.colorset', 'Contents.json'), { colors, info });
+  writeJson(
+    path.join(assets, 'SplashMotionBackground.colorset', 'Contents.json'),
+    { colors, info }
+  );
 
   const animFile = 'animation.json';
   const animDir = path.join(assets, 'SplashMotionAnimation.dataset');
@@ -350,9 +413,18 @@ function generateIos(projectRoot, o) {
     info,
   });
 
-  writeJson(path.join(assets, 'SplashMotionConfig.dataset', 'config.json'), runtimeConfig(o, animFile));
+  writeJson(
+    path.join(assets, 'SplashMotionConfig.dataset', 'config.json'),
+    runtimeConfig(o, animFile)
+  );
   writeJson(path.join(assets, 'SplashMotionConfig.dataset', 'Contents.json'), {
-    data: [{ 'filename': 'config.json', 'idiom': 'universal', 'universal-type-identifier': 'public.json' }],
+    data: [
+      {
+        'filename': 'config.json',
+        'idiom': 'universal',
+        'universal-type-identifier': 'public.json',
+      },
+    ],
     info,
   });
 
@@ -438,14 +510,32 @@ function generateAndroidFiles(projectRoot, o) {
   write(path.join(assetsDir, animFile), o.data);
   writeJson(path.join(assetsDir, 'config.json'), runtimeConfig(o, animFile));
 
-  write(path.join(main, 'res', 'values', 'splashmotion_colors.xml'), colorsXml(o.background.hex));
-  const night = path.join(main, 'res', 'values-night', 'splashmotion_colors.xml');
+  write(
+    path.join(main, 'res', 'values', 'splashmotion_colors.xml'),
+    colorsXml(o.background.hex)
+  );
+  const night = path.join(
+    main,
+    'res',
+    'values-night',
+    'splashmotion_colors.xml'
+  );
   if (o.darkBackground) write(night, colorsXml(o.darkBackground.hex));
   else fs.rmSync(night, { force: true });
 
   const icon = path.join(main, 'res', 'drawable', 'splashmotion_icon.xml');
-  const iconV31 = path.join(main, 'res', 'drawable-v31', 'splashmotion_icon.xml');
-  const still = path.join(main, 'res', 'drawable-nodpi', 'splashmotion_still.png');
+  const iconV31 = path.join(
+    main,
+    'res',
+    'drawable-v31',
+    'splashmotion_icon.xml'
+  );
+  const still = path.join(
+    main,
+    'res',
+    'drawable-nodpi',
+    'splashmotion_still.png'
+  );
   if (o.still) {
     write(still, fs.readFileSync(o.still));
     write(icon, androidIconXml(o, ANDROID_ICON.legacy));
@@ -475,22 +565,36 @@ function patchAndroidProject(projectRoot) {
   let manifest = fs.readFileSync(manifestPath, 'utf8');
   const activityRe = /<activity\b[^>]*android:name="\.MainActivity"[^>]*>/;
   const activity = manifest.match(activityRe);
-  if (!activity) throw new Error(`${LOG} Could not find .MainActivity in AndroidManifest.xml`);
+  if (!activity)
+    throw new Error(
+      `${LOG} Could not find .MainActivity in AndroidManifest.xml`
+    );
 
   const current = activity[0].match(/android:theme="([^"]+)"/);
   const appTheme = manifest.match(/<application\b[^>]*android:theme="([^"]+)"/);
   let postTheme = '@style/AppTheme';
-  if (current && current[1] !== '@style/SplashMotionTheme') postTheme = current[1];
-  else if (appTheme && appTheme[1] !== '@style/SplashMotionTheme') postTheme = appTheme[1];
+  if (current && current[1] !== '@style/SplashMotionTheme')
+    postTheme = current[1];
+  else if (appTheme && appTheme[1] !== '@style/SplashMotionTheme')
+    postTheme = appTheme[1];
 
   const patchedActivity = current
-    ? activity[0].replace(current[0], 'android:theme="@style/SplashMotionTheme"')
-    : activity[0].replace('<activity', '<activity\n        android:theme="@style/SplashMotionTheme"');
+    ? activity[0].replace(
+        current[0],
+        'android:theme="@style/SplashMotionTheme"'
+      )
+    : activity[0].replace(
+        '<activity',
+        '<activity\n        android:theme="@style/SplashMotionTheme"'
+      );
   manifest = manifest.replace(activity[0], patchedActivity);
   fs.writeFileSync(manifestPath, manifest);
 
   let styles = fs.readFileSync(stylesPath, 'utf8');
-  styles = styles.replace(/\s*<style name="SplashMotionTheme"[\s\S]*?<\/style>/, '');
+  styles = styles.replace(
+    /\s*<style name="SplashMotionTheme"[\s\S]*?<\/style>/,
+    ''
+  );
   styles = styles.replace(
     '</resources>',
     `    <style name="SplashMotionTheme" parent="Theme.SplashMotion">

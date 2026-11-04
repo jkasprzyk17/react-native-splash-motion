@@ -32,7 +32,9 @@ const pkg = require('../package.json');
 
 function withSplashMotion(config, props = {}) {
   if (!props.source) {
-    throw new Error(`${core.LOG} The Expo plugin needs a "source" option pointing to your animation.`);
+    throw new Error(
+      `${core.LOG} The Expo plugin needs a "source" option pointing to your animation.`
+    );
   }
 
   config = withDangerousMod(config, [
@@ -55,7 +57,9 @@ function withSplashMotion(config, props = {}) {
 
   config = withAndroidStyles(config, (c) => {
     const resources = c.modResults.resources;
-    resources.style = (resources.style ?? []).filter((s) => s.$.name !== 'SplashMotionTheme');
+    resources.style = (resources.style ?? []).filter(
+      (s) => s.$.name !== 'SplashMotionTheme'
+    );
     resources.style.push({
       $: { name: 'SplashMotionTheme', parent: 'Theme.SplashMotion' },
       item: [{ $: { name: 'postSplashScreenTheme' }, _: '@style/AppTheme' }],
@@ -64,7 +68,9 @@ function withSplashMotion(config, props = {}) {
   });
 
   config = withAndroidManifest(config, (c) => {
-    const activity = AndroidConfig.Manifest.getMainActivityOrThrow(c.modResults);
+    const activity = AndroidConfig.Manifest.getMainActivityOrThrow(
+      c.modResults
+    );
     activity.$['android:theme'] = '@style/SplashMotionTheme';
     return c;
   });

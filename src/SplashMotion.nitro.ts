@@ -15,8 +15,10 @@ export interface HideConfig {
   outro?: string;
 }
 
-export interface SplashMotionModule
-  extends HybridObject<{ ios: 'swift'; android: 'kotlin' }> {
+export interface SplashMotionModule extends HybridObject<{
+  ios: 'swift';
+  android: 'kotlin';
+}> {
   hide(config: HideConfig): Promise<void>;
   isVisible(): boolean;
 }
