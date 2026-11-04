@@ -24,7 +24,10 @@ if (project.extensions.findByName("kotlin") == null) {
 
 apply from: '../nitrogen/generated/android/splashmotion+autolinking.gradle'
 
-apply plugin: "com.facebook.react"
+// No `com.facebook.react` plugin: this is a pure Nitro module without a
+// codegenConfig, and the plugin would then generate React Native's own specs
+// (com.facebook.fbreact.specs.*) into this library — duplicate classes that
+// break release builds.
 
 android {
   namespace "com.margelo.nitro.splashmotion"
