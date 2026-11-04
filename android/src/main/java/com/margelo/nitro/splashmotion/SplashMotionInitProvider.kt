@@ -18,6 +18,7 @@ import com.facebook.react.ReactActivity
 class SplashMotionInitProvider : ContentProvider() {
   override fun onCreate(): Boolean {
     val app = context?.applicationContext as? Application ?: return true
+    SplashMotionController.preload(app)
     app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
       private fun handle(activity: Activity) {
         if (activity is ReactActivity) {

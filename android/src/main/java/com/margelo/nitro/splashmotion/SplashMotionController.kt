@@ -2,12 +2,15 @@ package com.margelo.nitro.splashmotion
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.Gravity
 import android.view.ViewGroup
+import android.view.Window
 import android.widget.FrameLayout
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.margelo.nitro.splashmotion.players.LottieSplashPlayer
@@ -22,25 +25,52 @@ internal object SplashMotionController {
 
   @Volatile private var visible = false
   @Volatile private var overlayReady = false
+  private var splashGone = false
 
   // Main-thread state
   private var installed = false
   private var overlay: SplashOverlay? = null
   private var player: SplashPlayer? = null
+  private var window: Window? = null
+  private var windowBackground: Drawable? = null
   private var shownAt = 0L
   private var hiding = false
   private val pending = mutableListOf<() -> Unit>()
 
   fun isVisible() = visible
 
+  // Read at process start by preload(), consumed by the first install().
+  private var preloadedConfig: SplashConfig? = null
+  private var preloadedBytes: ByteArray? = null
+
   // region Showing
+
+  /**
+   * Runs at process start (from SplashMotionInitProvider), long before the
+   * Activity exists: reads the animation and starts parsing it in the
+   * background, so its first frame is ready the moment the overlay attaches.
+   */
+  fun preload(context: Context) {
+    val config = SplashConfig.load(context) ?: return
+    val bytes = readAnimation(context, config) ?: return
+    preloadedConfig = config
+    preloadedBytes = bytes
+    LottieSplashPlayer.preload(bytes)
+  }
+
+  private fun readAnimation(context: Context, config: SplashConfig): ByteArray? = try {
+    context.assets.open("splashmotion/${config.file}").use { it.readBytes() }
+  } catch (e: Exception) {
+    Log.e(TAG, "Could not read the animation file.", e)
+    null
+  }
 
   fun install(activity: Activity) {
     if (installed) return
     installed = true
 
     val splash = activity.installSplashScreen()
-    val config = SplashConfig.load(activity)
+    val config = preloadedConfig ?: SplashConfig.load(activity)
     if (config == null) {
       Log.w(TAG, "No config found. Run `npx splash-motion generate <file>` and rebuild.")
       return
@@ -49,7 +79,13 @@ internal object SplashMotionController {
     visible = true
     shownAt = SystemClock.uptimeMillis()
     splash.setKeepOnScreenCondition { !overlayReady }
-    splash.setOnExitAnimationListener { it.remove() }
+    // Start the animation only once it's visible, so it picks up exactly
+    // where the launch-screen still leaves off.
+    splash.setOnExitAnimationListener {
+      it.remove()
+      splashGone = true
+      player?.play()
+    }
 
     // Runs right after onCreate(), once React Native has set its content view.
     main.post { attachOverlay(activity, config) }
@@ -58,17 +94,22 @@ internal object SplashMotionController {
   }
 
   private fun attachOverlay(activity: Activity, config: SplashConfig) {
-    val bytes = try {
-      activity.assets.open("splashmotion/${config.file}").use { it.readBytes() }
-    } catch (e: Exception) {
-      Log.e(TAG, "Could not read the animation file.", e)
-      return abort()
-    }
+    val bytes = preloadedBytes ?: readAnimation(activity, config) ?: return abort()
+    preloadedConfig = null
+    preloadedBytes = null
     val player = LottieSplashPlayer(activity)
+    val background = activity.getColor(R.color.splashmotion_background)
+
+    // The post-splash theme's window background (black with DayNight in dark
+    // mode) would show for a frame if the system splash leaves before the
+    // overlay draws. Use the splash color until the overlay is gone.
+    windowBackground = activity.window.decorView.background
+    window = activity.window
+    activity.window.setBackgroundDrawable(ColorDrawable(background))
 
     val density = activity.resources.displayMetrics.density
     val overlay = SplashOverlay(activity, (config.width * density).toFloat(), (config.height * density).toFloat()).apply {
-      setBackgroundColor(activity.getColor(R.color.splashmotion_background))
+      setBackgroundColor(background)
       isClickable = true // swallow touches while visible
       isFocusable = true
       translationZ = 10_000f
@@ -81,7 +122,10 @@ internal object SplashMotionController {
 
     this.overlay = overlay
     this.player = player
-    player.load(bytes, config) { overlayReady = true }
+    player.load(bytes, config) {
+      overlayReady = true
+      if (splashGone) player.play()
+    }
   }
 
   private fun abort() {
@@ -135,6 +179,9 @@ internal object SplashMotionController {
     val overlay = this.overlay ?: return flush()
     val finish = Runnable {
       (overlay.parent as? ViewGroup)?.removeView(overlay)
+      window?.setBackgroundDrawable(windowBackground)
+      window = null
+      windowBackground = null
       player?.stop()
       player = null
       this.overlay = null

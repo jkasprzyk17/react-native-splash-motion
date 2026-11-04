@@ -2,10 +2,12 @@
     <!-- Overridden by the app (`npx splash-motion generate` writes splashmotion_colors.xml). -->
     <color name="splashmotion_background">#FFFFFF</color>
 
-    <!-- System splash: background color only. The animation takes over as soon
-         as its first frame is ready, so there is no visible hand-off. -->
+    <!-- System splash: the background color, plus the animation's first frame when
+         generated with the CLI's still option (the app's splashmotion_icon.xml overrides the
+         empty default). The animation takes over as soon as its first frame is
+         ready, so there is no visible hand-off. -->
     <style name="Theme.SplashMotion" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splashmotion_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splashmotion_empty</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splashmotion_icon</item>
     </style>
 </resources>

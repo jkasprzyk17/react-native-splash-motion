@@ -33,6 +33,20 @@ function write(file, content) {
   fs.writeFileSync(file, content);
 }
 
+/** True if the PNG can be transparent: an alpha color type, or a tRNS chunk. */
+function pngHasAlpha(buffer) {
+  const colorType = buffer[25]; // IHDR, right after the 8-byte signature and chunk header
+  if (colorType === 4 || colorType === 6) return true;
+  for (let offset = 8; offset + 8 <= buffer.length; ) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.toString('ascii', offset + 4, offset + 8);
+    if (type === 'tRNS') return true;
+    if (type === 'IDAT' || type === 'IEND') return false;
+    offset += 12 + length;
+  }
+  return false;
+}
+
 function writeJson(file, data) {
   write(file, JSON.stringify(data, null, 2) + '\n');
 }
@@ -169,6 +183,12 @@ function resolveOptions(projectRoot, options) {
   if (still && path.extname(still).toLowerCase() !== '.png') {
     throw new Error(`${LOG} The still image must be a PNG.`);
   }
+  if (still && !pngHasAlpha(fs.readFileSync(still))) {
+    console.warn(
+      `${LOG} ${path.basename(still)} has no transparency, so its background shows as a box on the launch ` +
+        `screen whenever it isn't exactly the splash color. Export the first frame with a transparent background.`
+    );
+  }
 
   return {
     source,
@@ -236,28 +256,29 @@ const MAX_SCREEN_FRACTION = 0.9;
 
 function launchStoryboard(o) {
   const c = o.background;
+  // The background is a plain sRGB color: iOS doesn't resolve named asset-catalog
+  // colors on the launch screen (neither here nor in UILaunchScreen) and shows
+  // its own blue instead. That also means no dark-mode variant before launch.
   const image = o.still
     ? `
-                        <subviews>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="SplashMotionStill" translatesAutoresizingMaskIntoConstraints="NO" id="lsI-mg-001">
                                 <constraints>
                                     <constraint firstAttribute="width" constant="${o.width}" priority="750" id="lsW-id-001"/>
                                     <constraint firstAttribute="width" secondItem="lsI-mg-001" secondAttribute="height" multiplier="${o.width / o.height}" id="lsA-sp-001"/>
                                 </constraints>
-                            </imageView>
-                        </subviews>`
+                            </imageView>`
     : '';
+  const subviews = image ? `\n                        <subviews>${image}\n                        </subviews>` : '';
   const constraints = o.still
     ? `
-                        <constraints>
                             <constraint firstItem="lsI-mg-001" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="lsC-x0-001"/>
                             <constraint firstItem="lsI-mg-001" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="lsC-y0-001"/>
                             <constraint firstItem="lsI-mg-001" firstAttribute="width" relation="lessThanOrEqual" secondItem="Ze5-6b-2t3" secondAttribute="width" multiplier="${MAX_SCREEN_FRACTION}" id="lsM-xw-001"/>
                             <constraint firstItem="lsI-mg-001" firstAttribute="height" relation="lessThanOrEqual" secondItem="Ze5-6b-2t3" secondAttribute="height" multiplier="${MAX_SCREEN_FRACTION}" id="lsM-xh-001"/>
                         </constraints>`
     : '';
-  const imageResource = o.still
-    ? `\n        <image name="SplashMotionStill" width="${o.width}" height="${o.height}"/>`
+  const resources = o.still
+    ? `\n    <resources>\n        <image name="SplashMotionStill" width="${o.width}" height="${o.height}"/>\n    </resources>`
     : '';
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -266,7 +287,6 @@ function launchStoryboard(o) {
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
-        <capability name="Named colors" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -275,20 +295,15 @@ function launchStoryboard(o) {
                 <viewController id="01J-lp-oVM" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
-                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>${image}
-                        <color key="backgroundColor" name="SplashMotionBackground"/>${constraints}
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>${subviews}
+                        <color key="backgroundColor" red="${c.r.toFixed(3)}" green="${c.g.toFixed(3)}" blue="${c.b.toFixed(3)}" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>${constraints}
                     </view>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="53" y="375"/>
         </scene>
-    </scenes>
-    <resources>${imageResource}
-        <namedColor name="SplashMotionBackground">
-            <color red="${c.r.toFixed(3)}" green="${c.g.toFixed(3)}" blue="${c.b.toFixed(3)}" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-        </namedColor>
-    </resources>
+    </scenes>${resources}
 </document>
 `;
 }
@@ -352,6 +367,12 @@ function generateIos(projectRoot, o) {
     });
   }
 
+  if (o.darkBackground) {
+    console.warn(
+      `${LOG} iOS can't switch the launch screen color for dark mode, so it uses ${o.background.hex} ` +
+        `before the animation starts, then ${o.darkBackground.hex} in dark mode.`
+    );
+  }
   const storyboard = path.join(app.dir, `${app.storyboardName}.storyboard`);
   write(storyboard, launchStoryboard(o));
 
@@ -374,6 +395,38 @@ function colorsXml(hex) {
 `;
 }
 
+// How the system splash draws its icon (no icon background), so the still lands
+// exactly where the overlay's first frame will be. Only a centered circle of
+// ANDROID_ICON_VISIBLE dp is visible on every version.
+// - Android 12+: the icon is laid out in a 108dp box and scaled up to 192dp.
+// - Android 7–11 (AndroidX backport): drawn 1:1 in a 288dp box.
+const ANDROID_ICON_VISIBLE = 192;
+const ANDROID_ICON = {
+  v31: { canvas: 108, scale: 108 / 192 },
+  legacy: { canvas: 288, scale: 1 },
+};
+
+/** The still image, centered at the animation's on-screen size inside the splash icon. */
+function androidIconXml(o, { canvas, scale }) {
+  const dp = (n) => `${+(n * scale).toFixed(2)}dp`;
+  return `<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated by react-native-splash-motion. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
+            <size android:width="${canvas}dp" android:height="${canvas}dp" />
+        </shape>
+    </item>
+    <item
+        android:width="${dp(o.width)}"
+        android:height="${dp(o.height)}"
+        android:gravity="center"
+        android:drawable="@drawable/splashmotion_still" />
+</layer-list>
+`;
+}
+
 /** Android files: assets + colors (shared by the CLI and the Expo plugin). */
 function generateAndroidFiles(projectRoot, o) {
   const main = androidMain(projectRoot);
@@ -389,6 +442,26 @@ function generateAndroidFiles(projectRoot, o) {
   const night = path.join(main, 'res', 'values-night', 'splashmotion_colors.xml');
   if (o.darkBackground) write(night, colorsXml(o.darkBackground.hex));
   else fs.rmSync(night, { force: true });
+
+  const icon = path.join(main, 'res', 'drawable', 'splashmotion_icon.xml');
+  const iconV31 = path.join(main, 'res', 'drawable-v31', 'splashmotion_icon.xml');
+  const still = path.join(main, 'res', 'drawable-nodpi', 'splashmotion_still.png');
+  if (o.still) {
+    write(still, fs.readFileSync(o.still));
+    write(icon, androidIconXml(o, ANDROID_ICON.legacy));
+    write(iconV31, androidIconXml(o, ANDROID_ICON.v31));
+    if (Math.hypot(o.width, o.height) > ANDROID_ICON_VISIBLE) {
+      console.warn(
+        `${LOG} Android only shows a ${ANDROID_ICON_VISIBLE}dp circle of the launch-screen still, so its corners ` +
+          `are hidden until the animation starts. Keep the artwork inside that circle, or use a width ≤ ` +
+          `${Math.floor(ANDROID_ICON_VISIBLE / Math.hypot(1, o.height / o.width))} to show all of it.`
+      );
+    }
+  } else {
+    fs.rmSync(still, { force: true });
+    fs.rmSync(icon, { force: true });
+    fs.rmSync(iconV31, { force: true });
+  }
 
   return { assetsDir };
 }

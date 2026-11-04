@@ -49,6 +49,18 @@ The animation is drawn at a fixed size, centered on the splash background. Sizes
 
 Both must be positive numbers; decimals are fine. There is no upper limit, but at runtime the animation is **scaled down to fit 90% of the screen's width and height**, keeping its aspect ratio, so a large value never gets cut off (on phones, in landscape or in split-screen). It is never scaled up, so on tablets it stays at the size you set. The iOS launch-screen `--still` image follows the same rule, so the hand-off doesn't jump.
 
+### First frame on the launch screen (`--still`)
+
+Before your app's process is running, no code can play an animation: iOS shows its launch storyboard and Android its system splash, both static. Without a still, that moment shows only the background color. Pass a PNG of your animation's **first frame** (transparent background, ideally at 3× or 4× the size you set) and the CLI puts it on both launch screens at exactly the place and size of the animation, so the animation looks like it is there from the first tap and simply starts moving:
+
+```sh
+npx splash-motion generate assets/splash.json --background "#0F6E56" --still assets/splash-first-frame.png
+```
+
+Export the frame from After Effects or LottieFiles. With `--loop-marker`, use the first frame of that marker instead, since that's where playback starts.
+
+On Android the system splash only shows a centered circle 192dp wide, so keep the first frame's artwork inside that circle (or use a width of about 135dp or less to show all of it). Anything outside it appears as soon as the animation takes over.
+
 ### Bare React Native
 
 Generate the splash from your animation, then rebuild:
@@ -143,13 +155,15 @@ npx splash-motion generate <animation> [options]
   --width <number>          Animation width in dp/pt      (default: 160)
   --height <number>         Animation height in dp/pt     (default: keeps aspect ratio)
                             Scaled down at runtime to fit 90% of the screen
-  --still <png>             Image for the iOS launch screen (your first frame)
+  --still <png>             Your animation's first frame, shown by the launch screen (iOS + Android)
   --loop-marker <name>      Only loop this marker's range
   --no-loop                 Play once and hold the last frame
   --platforms <list>        ios,android                   (default: both)
 ```
 
 The Expo plugin accepts the same options in camelCase (`darkBackground`, `loopMarker`, …) plus `source`.
+
+> **Dark mode on iOS:** the launch screen can only use a fixed color (iOS ignores asset-catalog colors there), so before the animation starts iOS always shows `--background`; the animation then switches to `--dark-background`. Android uses the dark color from the first frame.
 
 ## Designing your animation
 
@@ -168,7 +182,7 @@ Tap icon ─▶ OS launch screen ─▶ native overlay (animation playing) ─�
 ```
 
 1. **Build time** — the CLI / Expo plugin copies your animation (unpacking a `.lottie` to JSON) into the app's asset catalog (iOS) and `assets/` (Android), generates a matching launch screen and theme, and records the config.
-2. **Launch** — the OS shows the static launch screen. SplashMotion installs itself automatically (`+load` on iOS, an init `ContentProvider` on Android), attaches a native overlay to the first window and starts the animation. On Android the system splash is held until the animation's first frame is ready, so the hand-off is invisible.
+2. **Launch** — the OS shows the static launch screen. SplashMotion installs itself automatically (`+load` on iOS, an init `ContentProvider` on Android), attaches a native overlay to the first window and starts the animation. On Android the animation is parsed in the background as soon as the process starts, and the system splash is held until its first frame is ready; the animation then starts from that frame, so the hand-off from the `--still` image is invisible.
 3. **JS ready** — `hide()` goes through Nitro straight to Swift/Kotlin, which runs the exit sequence and removes the overlay.
 
 ## Testing
@@ -188,11 +202,12 @@ jest.mock('react-native-splash-motion', () => ({
 ## Troubleshooting
 
 - **Nothing changed** — native assets only update on a rebuild. Re-run `pod install` and rebuild; a JS reload isn't enough.
+- **iOS shows the old launch screen, then the new background** — iOS caches a snapshot of the launch screen and only refreshes it when the app is reinstalled. Delete the app from the device or simulator (or run `xcrun simctl uninstall booted <bundle id>`), then build again.
 - **Expo shows the old splash** — make sure `expo-splash-screen` is removed, then `npx expo prebuild --clean`.
 
 ## Roadmap
 
-- Automatic first-frame extraction for the launch screen
+- Automatic first-frame extraction for `--still`
 - Per-platform animations and sizes
 
 ## Contributing

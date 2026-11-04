@@ -16,8 +16,8 @@ const HELP = `
     --width <number>          Animation width in dp/pt      (default: 160)
     --height <number>         Animation height in dp/pt     (default: keeps aspect ratio)
                               Scaled down at runtime to fit 90% of the screen
-    --still <png>             Optional image shown by the iOS launch screen
-                              (use your animation's first frame)
+    --still <png>             Your animation's first frame, shown by the system
+                              launch screen (iOS + Android) before the app starts
     --loop-marker <name>      Only loop this marker's range
     --no-loop                 Play once and hold the last frame
     --platforms <list>        ios,android                   (default: both)
