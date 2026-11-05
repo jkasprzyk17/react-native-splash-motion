@@ -231,6 +231,7 @@ jest.mock('react-native-splash-motion', () => ({
 - Automatic first-frame extraction for `--still`
 - Dark-mode background (`--dark-background`) that stays seamless on iOS too
 - Per-platform animations and sizes
+- Rive (`.riv`) animation support
 
 ## Contributing
 
