@@ -181,10 +181,15 @@ npx splash-motion generate <animation> [options]
   --still <png>             Your animation's first frame, shown by the launch screen (iOS + Android)
   --loop-marker <name>      Only loop this marker's range
   --no-loop                 Play once and hold the last frame
+  --keep-background         Keep a full-canvas background solid in the animation (removed by default)
   --platforms <list>        ios,android                   (default: both)
 ```
 
-The Expo plugin accepts the same options in camelCase (`loopMarker`, …) plus `source`.
+The Expo plugin accepts the same options in camelCase (`loopMarker`, `keepBackground: true`, …) plus `source`.
+
+### Background layers
+
+Animations exported from After Effects often include a full-size background solid (e.g. a white "White Solid 1" layer). It would draw an opaque box over your splash color, so the CLI removes it automatically and logs what it removed. Only plain, fully opaque solids at the bottom of the layer stack that cover the whole canvas are removed. Shapes, images and anything animated, masked or used as a matte are left alone. Pass `--keep-background` to keep it.
 
 ## Designing your animation
 

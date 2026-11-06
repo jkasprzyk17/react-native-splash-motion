@@ -177,6 +177,88 @@ function readDotLottie(file) {
 }
 
 // ---------------------------------------------------------------------------
+// Background removal
+
+/** Returns a property's value when it is not animated, otherwise undefined. */
+function staticValue(prop, fallback) {
+  if (prop == null) return fallback;
+  if (prop.a === 1) return undefined;
+  return prop.k;
+}
+
+/** Position of a transform, supporting split (separate x/y) positions. */
+function staticPosition(ks) {
+  const p = ks.p;
+  if (p == null) return [0, 0];
+  if (p.s) {
+    const x = staticValue(p.x);
+    const y = staticValue(p.y);
+    return typeof x === 'number' && typeof y === 'number' ? [x, y] : undefined;
+  }
+  return staticValue(p);
+}
+
+/**
+ * A layer is a background plate when it is a plain, fully opaque solid that
+ * covers the whole canvas for the entire animation and nothing else depends on
+ * it (no mattes, masks, parenting or blending).
+ */
+function isBackgroundSolid(layer, lottie) {
+  if (layer.ty !== 1 || !layer.sw || !layer.sh) return false;
+  if (layer.hd || layer.parent != null || layer.hasMask) return false;
+  if (layer.masksProperties?.length) return false;
+  if (layer.tt || layer.td || (layer.bm ?? 0) !== 0) return false;
+  if (lottie.layers.some((l) => l !== layer && l.parent === layer.ind)) {
+    return false;
+  }
+
+  const ks = layer.ks ?? {};
+  const opacity = staticValue(ks.o, 100);
+  const rotation = staticValue(ks.r, 0);
+  const position = staticPosition(ks);
+  const anchor = staticValue(ks.a, [0, 0]);
+  const scale = staticValue(ks.s, [100, 100]);
+  if (opacity !== 100 || rotation !== 0) return false;
+  if (!Array.isArray(position) || !Array.isArray(anchor)) return false;
+  if (!Array.isArray(scale)) return false;
+
+  const sx = scale[0] / 100;
+  const sy = scale[1] / 100;
+  const xs = [
+    position[0] - anchor[0] * sx,
+    position[0] + (layer.sw - anchor[0]) * sx,
+  ];
+  const ys = [
+    position[1] - anchor[1] * sy,
+    position[1] + (layer.sh - anchor[1]) * sy,
+  ];
+  const tolerance = 1;
+  return (
+    Math.min(...xs) <= tolerance &&
+    Math.min(...ys) <= tolerance &&
+    Math.max(...xs) >= lottie.w - tolerance &&
+    Math.max(...ys) >= lottie.h - tolerance
+  );
+}
+
+/**
+ * Removes full-canvas solid layers from the bottom of the layer stack (the
+ * usual After Effects "background solid"), so the animation sits on the splash
+ * color instead of drawing an opaque box. Returns the removed layers.
+ */
+function stripBackgroundLayers(lottie) {
+  const removed = [];
+  if (!Array.isArray(lottie.layers) || !lottie.w || !lottie.h) return removed;
+  // Lottie draws the last layer first, so the bottom of the stack is the end.
+  while (lottie.layers.length > 1) {
+    const last = lottie.layers[lottie.layers.length - 1];
+    if (!isBackgroundSolid(last, lottie)) break;
+    removed.push(lottie.layers.pop());
+  }
+  return removed;
+}
+
+// ---------------------------------------------------------------------------
 // Input
 
 /** Reads the animation and resolves the final, normalized config. */
@@ -209,9 +291,18 @@ function resolveOptions(projectRoot, options) {
     );
   }
   const ratio = lottie.w && lottie.h ? lottie.h / lottie.w : 1;
-  // A .json is copied as-is; a .lottie ships as the plain JSON unpacked above.
+
+  const removed = options.keepBackground ? [] : stripBackgroundLayers(lottie);
+  for (const layer of removed) {
+    console.log(
+      `${LOG} Removed background layer "${layer.nm ?? layer.ind}" (${layer.sc}) so the animation ` +
+        `sits on the splash color. Use --keep-background to keep it.`
+    );
+  }
+
+  // An untouched .json is copied as-is; otherwise ship the (unpacked/edited) JSON.
   const data =
-    ext === '.lottie'
+    ext === '.lottie' || removed.length
       ? Buffer.from(JSON.stringify(lottie))
       : fs.readFileSync(source);
 

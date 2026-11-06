@@ -19,12 +19,16 @@ const HELP = `
                               launch screen (iOS + Android) before the app starts
     --loop-marker <name>      Only loop this marker's range
     --no-loop                 Play once and hold the last frame
+    --keep-background         Keep a full-canvas background solid in the
+                              animation (removed by default)
     --platforms <list>        ios,android                   (default: both)
     --project-root <path>     Your app's root folder        (default: current directory)
 
   Example:
     npx splash-motion generate assets/splash.json --background "#0F6E56" --width 200
 `;
+
+const BOOLEAN_FLAGS = new Set(['keep-background']);
 
 function parseArgs(argv) {
   const positional = [];
@@ -33,6 +37,8 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === '-h' || arg === '--help') {
       flags.help = true;
+    } else if (BOOLEAN_FLAGS.has(arg.slice(2))) {
+      flags[toCamel(arg.slice(2))] = true;
     } else if (arg.startsWith('--no-')) {
       flags[toCamel(arg.slice(5))] = false;
     } else if (arg.startsWith('--')) {
