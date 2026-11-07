@@ -18,8 +18,6 @@
     "android",
     "ios",
     "cpp",
-    "cli",
-    "plugin",
     "app.plugin.js",
     "nitrogen",
     "nitro.json",
@@ -39,11 +37,11 @@
   "scripts": {
     "example": "yarn workspace react-native-splash-motion-example",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
-    "prepare": "bob build",
+    "prepare": "bob build && tsc -p tsconfig.cli.json",
     "nitrogen": "nitrogen",
-    "typecheck": "tsc",
+    "typecheck": "tsc && tsc -p tsconfig.cli.json --noEmit",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "example:splash": "node cli/index.js generate assets/splash.json --project-root example --background \"#FFFFFF\" --width 200"
+    "example:splash": "tsc -p tsconfig.cli.json && node lib/cli/index.js generate assets/splash.json --project-root example --background \"#FFFFFF\" --width 200"
   },
   "keywords": [
     "react-native",
@@ -78,6 +76,7 @@
     "@eslint/js": "^9.39.5",
     "@react-native/babel-preset": "0.88.0",
     "@react-native/eslint-config": "0.88.0",
+    "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "del-cli": "^8.0.1",
     "eslint": "^9.39.5",
@@ -143,6 +142,6 @@
     "version": "0.64.0"
   },
   "bin": {
-    "splash-motion": "./cli/index.js"
+    "splash-motion": "./lib/cli/index.js"
   }
 }

@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-'use strict';
-
-const path = require('path');
-const core = require('./core');
+import path from 'path';
+import * as core from './core';
 
 const HELP = `
   Usage: npx splash-motion generate <animation> [options]
@@ -30,11 +28,13 @@ const HELP = `
 
 const BOOLEAN_FLAGS = new Set(['keep-background']);
 
-function parseArgs(argv) {
-  const positional = [];
-  const flags = {};
+type Flags = Record<string, string | boolean | undefined>;
+
+function parseArgs(argv: string[]) {
+  const positional: string[] = [];
+  const flags: Flags = {};
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
+    const arg = argv[i]!;
     if (arg === '-h' || arg === '--help') {
       flags.help = true;
     } else if (BOOLEAN_FLAGS.has(arg.slice(2))) {
@@ -42,7 +42,7 @@ function parseArgs(argv) {
     } else if (arg.startsWith('--no-')) {
       flags[toCamel(arg.slice(5))] = false;
     } else if (arg.startsWith('--')) {
-      const [key, inline] = arg.slice(2).split('=');
+      const [key = '', inline] = arg.slice(2).split('=');
       const value = inline ?? argv[++i];
       if (value === undefined)
         throw new Error(`${core.LOG} Missing value for --${key}`);
@@ -54,8 +54,8 @@ function parseArgs(argv) {
   return { positional, flags };
 }
 
-function toCamel(s) {
-  return s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+function toCamel(s: string) {
+  return s.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
 }
 
 function main() {
@@ -72,11 +72,17 @@ function main() {
     );
   }
 
-  const projectRoot = path.resolve(flags.projectRoot ?? process.cwd());
+  const projectRoot = path.resolve(
+    typeof flags.projectRoot === 'string' ? flags.projectRoot : process.cwd()
+  );
   const platforms = String(flags.platforms ?? 'ios,android')
     .split(',')
     .map((p) => p.trim());
-  const options = core.resolveOptions(projectRoot, { ...flags, source });
+  // Flags are untyped argv strings; resolveOptions validates them.
+  const options = core.resolveOptions(projectRoot, {
+    ...flags,
+    source,
+  } as core.SplashOptions);
 
   console.log(
     `\n✨ SplashMotion — Lottie splash (${options.width}×${options.height})\n`
@@ -105,6 +111,6 @@ function main() {
 try {
   main();
 } catch (error) {
-  console.error(error.message ?? error);
+  console.error(error instanceof Error ? error.message : error);
   process.exit(1);
 }

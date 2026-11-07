@@ -1,20 +1,107 @@
-'use strict';
-
 /**
  * Shared asset generation used by both the CLI (`npx splash-motion generate`)
  * and the Expo config plugin. Zero dependencies.
  */
-const { Buffer } = require('buffer');
-const fs = require('fs');
-const path = require('path');
-const zlib = require('zlib');
+import { Buffer } from 'buffer';
+import fs from 'fs';
+import path from 'path';
+import zlib from 'zlib';
 
-const LOG = '[splash-motion]';
+export const LOG = '[splash-motion]';
+
+/** Options as given on the command line or in the Expo plugin config. */
+export interface SplashOptions {
+  source?: string;
+  width?: number | string;
+  height?: number | string;
+  background?: string;
+  still?: string;
+  loop?: boolean;
+  loopMarker?: string;
+  keepBackground?: boolean;
+}
+
+interface Color {
+  hex: string;
+  r: number;
+  g: number;
+  b: number;
+}
+
+export interface ResolvedOptions {
+  source: string;
+  data: Buffer;
+  width: number;
+  height: number;
+  background: Color;
+  still: string | null;
+  loop: boolean;
+  loopMarker: string | null;
+}
+
+// The parts of the Lottie format this file reads. Values come from user files,
+// so everything is optional and checked before use.
+type Vec = [number, number, ...number[]];
+
+interface Animatable<T> {
+  a?: number;
+  k?: T;
+}
+
+interface Position extends Animatable<Vec> {
+  s?: boolean;
+  x?: Animatable<number>;
+  y?: Animatable<number>;
+}
+
+interface Transform {
+  o?: Animatable<number>;
+  r?: Animatable<number>;
+  p?: Position;
+  a?: Animatable<Vec>;
+  s?: Animatable<Vec>;
+}
+
+interface Layer {
+  ty?: number;
+  ind?: number;
+  nm?: string;
+  parent?: number;
+  hd?: boolean;
+  hasMask?: boolean;
+  masksProperties?: unknown[];
+  tt?: number;
+  td?: number;
+  bm?: number;
+  sw?: number;
+  sh?: number;
+  sc?: string;
+  ks?: Transform;
+}
+
+interface Asset {
+  p?: string;
+  u?: string;
+  e?: number;
+}
+
+interface Lottie {
+  w?: number;
+  h?: number;
+  layers?: Layer[];
+  assets?: Asset[];
+}
+
+interface Canvas {
+  layers: Layer[];
+  w: number;
+  h: number;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
 
-function parseHex(hex) {
+function parseHex(hex: string): Color {
   let value = String(hex).trim().replace(/^#/, '');
   if (value.length === 3)
     value = value
@@ -35,13 +122,13 @@ function parseHex(hex) {
   };
 }
 
-function write(file, content) {
+function write(file: string, content: string | Buffer) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, content);
 }
 
 /** True if the PNG can be transparent: an alpha color type, or a tRNS chunk. */
-function pngHasAlpha(buffer) {
+function pngHasAlpha(buffer: Buffer) {
   const colorType = buffer[25]; // IHDR, right after the 8-byte signature and chunk header
   if (colorType === 4 || colorType === 6) return true;
   for (let offset = 8; offset + 8 <= buffer.length;) {
@@ -54,15 +141,27 @@ function pngHasAlpha(buffer) {
   return false;
 }
 
-function writeJson(file, data) {
+function writeJson(file: string, data: unknown) {
   write(file, JSON.stringify(data, null, 2) + '\n');
 }
 
 // ---------------------------------------------------------------------------
 // dotLottie
 
+interface ZipEntry {
+  method: number;
+  size: number;
+  header: number;
+}
+
+interface Zip {
+  names: string[];
+  has(name: string): boolean;
+  read(name: string): Buffer;
+}
+
 /** Minimal ZIP reader (stored + deflate entries), enough for .lottie archives. */
-function readZip(buffer) {
+function readZip(buffer: Buffer): Zip {
   let eocd = -1;
   for (
     let i = buffer.length - 22;
@@ -76,7 +175,7 @@ function readZip(buffer) {
   }
   if (eocd < 0) throw new Error('not a ZIP archive');
 
-  const entries = new Map();
+  const entries = new Map<string, ZipEntry>();
   let offset = buffer.readUInt32LE(eocd + 16);
   for (let n = buffer.readUInt16LE(eocd + 10); n > 0; n--) {
     if (buffer.readUInt32LE(offset) !== 0x02014b50)
@@ -101,7 +200,9 @@ function readZip(buffer) {
     names: [...entries.keys()],
     has: (name) => entries.has(name),
     read(name) {
-      const { method, size, header } = entries.get(name);
+      const entry = entries.get(name);
+      if (!entry) throw new Error(`missing entry ${name}`);
+      const { method, size, header } = entry;
       const start =
         header +
         30 +
@@ -115,7 +216,7 @@ function readZip(buffer) {
   };
 }
 
-const IMAGE_TYPES = {
+const IMAGE_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -127,17 +228,20 @@ const IMAGE_TYPES = {
  * Unpacks a .lottie (v1 or v2) into plain Lottie JSON. Uses the active (or first)
  * animation and inlines bundled images, since the native players get one file.
  */
-function readDotLottie(file) {
+function readDotLottie(file: string): Lottie {
   const name = path.basename(file);
-  let zip;
-  let manifest = {};
+  let zip: Zip;
+  let manifest: {
+    animations?: { id?: string }[];
+    activeAnimationId?: string;
+  } = {};
   try {
     zip = readZip(fs.readFileSync(file));
     if (zip.has('manifest.json'))
       manifest = JSON.parse(zip.read('manifest.json').toString('utf8'));
   } catch (error) {
     throw new Error(
-      `${LOG} ${name} is not a valid .lottie file (${error.message}).`
+      `${LOG} ${name} is not a valid .lottie file (${(error as Error).message}).`
     );
   }
 
@@ -154,7 +258,7 @@ function readDotLottie(file) {
     );
   }
 
-  let json;
+  let json: Lottie;
   try {
     json = JSON.parse(zip.read(entry).toString('utf8'));
   } catch {
@@ -180,14 +284,17 @@ function readDotLottie(file) {
 // Background removal
 
 /** Returns a property's value when it is not animated, otherwise undefined. */
-function staticValue(prop, fallback) {
+function staticValue<T>(
+  prop: Animatable<T> | undefined,
+  fallback?: T
+): T | undefined {
   if (prop == null) return fallback;
   if (prop.a === 1) return undefined;
   return prop.k;
 }
 
 /** Position of a transform, supporting split (separate x/y) positions. */
-function staticPosition(ks) {
+function staticPosition(ks: Transform): Vec | undefined {
   const p = ks.p;
   if (p == null) return [0, 0];
   if (p.s) {
@@ -203,7 +310,7 @@ function staticPosition(ks) {
  * covers the whole canvas for the entire animation and nothing else depends on
  * it (no mattes, masks, parenting or blending).
  */
-function isBackgroundSolid(layer, lottie) {
+function isBackgroundSolid(layer: Layer, lottie: Canvas) {
   if (layer.ty !== 1 || !layer.sw || !layer.sh) return false;
   if (layer.hd || layer.parent != null || layer.hasMask) return false;
   if (layer.masksProperties?.length) return false;
@@ -212,12 +319,12 @@ function isBackgroundSolid(layer, lottie) {
     return false;
   }
 
-  const ks = layer.ks ?? {};
+  const ks: Transform = layer.ks ?? {};
   const opacity = staticValue(ks.o, 100);
   const rotation = staticValue(ks.r, 0);
   const position = staticPosition(ks);
-  const anchor = staticValue(ks.a, [0, 0]);
-  const scale = staticValue(ks.s, [100, 100]);
+  const anchor = staticValue<Vec>(ks.a, [0, 0]);
+  const scale = staticValue<Vec>(ks.s, [100, 100]);
   if (opacity !== 100 || rotation !== 0) return false;
   if (!Array.isArray(position) || !Array.isArray(anchor)) return false;
   if (!Array.isArray(scale)) return false;
@@ -246,14 +353,16 @@ function isBackgroundSolid(layer, lottie) {
  * usual After Effects "background solid"), so the animation sits on the splash
  * color instead of drawing an opaque box. Returns the removed layers.
  */
-function stripBackgroundLayers(lottie) {
-  const removed = [];
-  if (!Array.isArray(lottie.layers) || !lottie.w || !lottie.h) return removed;
+function stripBackgroundLayers(lottie: Lottie): Layer[] {
+  const removed: Layer[] = [];
+  const { layers, w, h } = lottie;
+  if (!Array.isArray(layers) || !w || !h) return removed;
   // Lottie draws the last layer first, so the bottom of the stack is the end.
-  while (lottie.layers.length > 1) {
-    const last = lottie.layers[lottie.layers.length - 1];
-    if (!isBackgroundSolid(last, lottie)) break;
-    removed.push(lottie.layers.pop());
+  while (layers.length > 1) {
+    const last = layers[layers.length - 1];
+    if (!last || !isBackgroundSolid(last, { layers, w, h })) break;
+    removed.push(last);
+    layers.pop();
   }
   return removed;
 }
@@ -262,7 +371,10 @@ function stripBackgroundLayers(lottie) {
 // Input
 
 /** Reads the animation and resolves the final, normalized config. */
-function resolveOptions(projectRoot, options) {
+export function resolveOptions(
+  projectRoot: string,
+  options: SplashOptions
+): ResolvedOptions {
   if (!options.source) {
     throw new Error(
       `${LOG} Missing animation file. Usage: npx splash-motion generate <file.json|file.lottie>`
@@ -274,7 +386,7 @@ function resolveOptions(projectRoot, options) {
   }
 
   const ext = path.extname(source).toLowerCase();
-  let lottie;
+  let lottie: Lottie;
   if (ext === '.json') {
     try {
       lottie = JSON.parse(fs.readFileSync(source, 'utf8'));
@@ -339,7 +451,7 @@ function resolveOptions(projectRoot, options) {
   };
 }
 
-function runtimeConfig(o, file) {
+function runtimeConfig(o: ResolvedOptions, file: string) {
   return {
     file,
     width: o.width,
@@ -353,7 +465,7 @@ function runtimeConfig(o, file) {
 // ---------------------------------------------------------------------------
 // iOS
 
-function findIosApp(projectRoot) {
+function findIosApp(projectRoot: string) {
   const iosDir = path.join(projectRoot, 'ios');
   if (!fs.existsSync(iosDir)) return null;
   for (const entry of fs.readdirSync(iosDir)) {
@@ -369,16 +481,15 @@ function findIosApp(projectRoot) {
     const xcassets = fs.readdirSync(dir).find((f) => f.endsWith('.xcassets'));
     return {
       dir,
-      storyboardName: match
-        ? match[1].replace(/\.storyboard$/, '')
-        : 'LaunchScreen',
+      storyboardName:
+        match?.[1]?.replace(/\.storyboard$/, '') ?? 'LaunchScreen',
       xcassets: xcassets ? path.join(dir, xcassets) : null,
     };
   }
   return null;
 }
 
-function colorComponents(c) {
+function colorComponents(c: Color) {
   return {
     'color-space': 'srgb',
     'components': {
@@ -394,7 +505,7 @@ function colorComponents(c) {
 // the aspect ratio) to fit MAX_SCREEN_FRACTION of the screen.
 const MAX_SCREEN_FRACTION = 0.9;
 
-function launchStoryboard(o) {
+function launchStoryboard(o: ResolvedOptions) {
   const c = o.background;
   // The background is a plain sRGB color: iOS doesn't resolve named asset-catalog
   // colors on the launch screen (neither here nor in UILaunchScreen) and shows
@@ -459,7 +570,7 @@ function launchStoryboard(o) {
  * - Images.xcassets/SplashMotionStill.imageset       (optional)
  * - <LaunchScreen>.storyboard                       (overwritten)
  */
-function generateIos(projectRoot, o) {
+export function generateIos(projectRoot: string, o: ResolvedOptions) {
   const app = findIosApp(projectRoot);
   if (!app)
     throw new Error(
@@ -527,11 +638,11 @@ function generateIos(projectRoot, o) {
 // ---------------------------------------------------------------------------
 // Android
 
-function androidMain(projectRoot) {
+function androidMain(projectRoot: string) {
   return path.join(projectRoot, 'android', 'app', 'src', 'main');
 }
 
-function colorsXml(hex) {
+function colorsXml(hex: string) {
   return `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by react-native-splash-motion. -->
 <resources>
@@ -552,8 +663,11 @@ const ANDROID_ICON = {
 };
 
 /** The still image, centered at the animation's on-screen size inside the splash icon. */
-function androidIconXml(o, { canvas, scale }) {
-  const dp = (n) => `${+(n * scale).toFixed(2)}dp`;
+function androidIconXml(
+  o: ResolvedOptions,
+  { canvas, scale }: { canvas: number; scale: number }
+) {
+  const dp = (n: number) => `${+(n * scale).toFixed(2)}dp`;
   return `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by react-native-splash-motion. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
@@ -573,7 +687,7 @@ function androidIconXml(o, { canvas, scale }) {
 }
 
 /** Android files: assets + colors (shared by the CLI and the Expo plugin). */
-function generateAndroidFiles(projectRoot, o) {
+export function generateAndroidFiles(projectRoot: string, o: ResolvedOptions) {
   const main = androidMain(projectRoot);
   if (!fs.existsSync(main)) throw new Error(`${LOG} Could not find ${main}`);
 
@@ -622,7 +736,7 @@ function generateAndroidFiles(projectRoot, o) {
 }
 
 /** Bare React Native only: point MainActivity at the splash theme. */
-function patchAndroidProject(projectRoot) {
+export function patchAndroidProject(projectRoot: string) {
   const main = androidMain(projectRoot);
   const manifestPath = path.join(main, 'AndroidManifest.xml');
   const stylesPath = path.join(main, 'res', 'values', 'styles.xml');
@@ -636,12 +750,15 @@ function patchAndroidProject(projectRoot) {
     );
 
   const current = activity[0].match(/android:theme="([^"]+)"/);
-  const appTheme = manifest.match(/<application\b[^>]*android:theme="([^"]+)"/);
+  const currentTheme = current?.[1];
+  const appTheme = manifest.match(
+    /<application\b[^>]*android:theme="([^"]+)"/
+  )?.[1];
   let postTheme = '@style/AppTheme';
-  if (current && current[1] !== '@style/SplashMotionTheme')
-    postTheme = current[1];
-  else if (appTheme && appTheme[1] !== '@style/SplashMotionTheme')
-    postTheme = appTheme[1];
+  if (currentTheme && currentTheme !== '@style/SplashMotionTheme')
+    postTheme = currentTheme;
+  else if (appTheme && appTheme !== '@style/SplashMotionTheme')
+    postTheme = appTheme;
 
   const patchedActivity = current
     ? activity[0].replace(
@@ -670,11 +787,3 @@ function patchAndroidProject(projectRoot) {
   );
   fs.writeFileSync(stylesPath, styles);
 }
-
-module.exports = {
-  LOG,
-  resolveOptions,
-  generateIos,
-  generateAndroidFiles,
-  patchAndroidProject,
-};

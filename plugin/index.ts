@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Expo config plugin. Usage in app.json:
  *
@@ -10,9 +8,52 @@
  *
  * `source` can be a Lottie .json or a dotLottie .lottie file.
  */
-const core = require('../cli/core');
+import * as core from '../cli/core';
 
-function loadConfigPlugins() {
+// The slice of `expo/config-plugins` used here, typed locally so the package
+// doesn't need Expo as a dependency.
+type ExpoConfig = Record<string, unknown>;
+
+type ModConfig<T> = ExpoConfig & {
+  modRequest: { projectRoot: string };
+  modResults: T;
+};
+
+type Mod<T> = (config: ModConfig<T>) => ModConfig<T>;
+
+type ConfigPlugin<P> = (config: ExpoConfig, props?: P) => ExpoConfig;
+
+interface StyleResource {
+  $: { name: string; parent?: string };
+  item: { $: { name: string }; _: string }[];
+}
+
+interface StylesXml {
+  resources: { style?: StyleResource[] };
+}
+
+interface ConfigPlugins {
+  AndroidConfig: {
+    Manifest: {
+      getMainActivityOrThrow(manifest: unknown): {
+        $: Record<string, string | undefined>;
+      };
+    };
+  };
+  createRunOncePlugin<P>(
+    plugin: ConfigPlugin<P>,
+    name: string,
+    version: string
+  ): ConfigPlugin<P>;
+  withAndroidManifest(config: ExpoConfig, action: Mod<unknown>): ExpoConfig;
+  withAndroidStyles(config: ExpoConfig, action: Mod<StylesXml>): ExpoConfig;
+  withDangerousMod(
+    config: ExpoConfig,
+    mod: ['ios' | 'android', Mod<unknown>]
+  ): ExpoConfig;
+}
+
+function loadConfigPlugins(): ConfigPlugins {
   try {
     return require('expo/config-plugins');
   } catch {
@@ -28,9 +69,16 @@ const {
   withDangerousMod,
 } = loadConfigPlugins();
 
-const pkg = require('../package.json');
+// Resolved by package name, so it works from the compiled lib/plugin folder.
+const pkg: {
+  name: string;
+  version: string;
+} = require('react-native-splash-motion/package.json');
 
-function withSplashMotion(config, props = {}) {
+const withSplashMotion: ConfigPlugin<core.SplashOptions> = (
+  config,
+  props = {}
+) => {
   if (!props.source) {
     throw new Error(
       `${core.LOG} The Expo plugin needs a "source" option pointing to your animation.`
@@ -76,6 +124,6 @@ function withSplashMotion(config, props = {}) {
   });
 
   return config;
-}
+};
 
-module.exports = createRunOncePlugin(withSplashMotion, pkg.name, pkg.version);
+export = createRunOncePlugin(withSplashMotion, pkg.name, pkg.version);
