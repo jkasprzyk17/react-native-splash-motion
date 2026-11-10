@@ -524,6 +524,7 @@ function launchStoryboard(o: ResolvedOptions) {
     : '';
   const constraints = o.still
     ? `
+                        <constraints>
                             <constraint firstItem="lsI-mg-001" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="lsC-x0-001"/>
                             <constraint firstItem="lsI-mg-001" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="lsC-y0-001"/>
                             <constraint firstItem="lsI-mg-001" firstAttribute="width" relation="lessThanOrEqual" secondItem="Ze5-6b-2t3" secondAttribute="width" multiplier="${MAX_SCREEN_FRACTION}" id="lsM-xw-001"/>
