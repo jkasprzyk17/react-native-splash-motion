@@ -10,6 +10,13 @@ public final class SplashMotionInstaller: NSObject {
 
   @objc public static func install() {
     guard observer == nil else { return }
+    #if DEBUG
+    // Debug builds with expo-dev-client open the dev launcher first. Its UI is a
+    // view inside a plain root view controller, so `shouldAttach` can't tell it
+    // from the app, and the touch-swallowing overlay would cover the launcher
+    // until JavaScript calls `hide()` — which never happens there.
+    if NSClassFromString("EXDevLauncherController") != nil { return }
+    #endif
     observer = NotificationCenter.default.addObserver(
       forName: UIWindow.didBecomeKeyNotification,
       object: nil,
