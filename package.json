@@ -1,7 +1,7 @@
 {
   "name": "react-native-splash-motion",
   "version": "0.1.2",
-  "description": "Animated Lottie splash screens for React Native — rendered natively before your JS loads. Zero native code. Built on Nitro.",
+  "description": "React Native splash screen with animated Lottie & dotLottie, rendered natively before your JS loads. Expo + bare React Native, zero native code, built on Nitro Modules.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
@@ -55,7 +55,14 @@
     "nitro",
     "new-architecture",
     "ios",
-    "android"
+    "android",
+    "react-native-splash",
+    "react-native-splash-screen",
+    "animated-splash-screen",
+    "lottie-splash-screen",
+    "dotlottie",
+    "expo-splash-screen",
+    "nitro-modules"
   ],
   "repository": {
     "type": "git",
