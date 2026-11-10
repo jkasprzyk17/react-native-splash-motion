@@ -1,6 +1,6 @@
-# react-native-splash-motion
+# react-native-splash-motion — React Native Splash Screen with Lottie Animation
 
-**Animated Lottie splash screens for React Native — rendered natively, _before_ your JavaScript loads.**
+**An animated React Native splash screen with Lottie & dotLottie — rendered natively, _before_ your JavaScript loads.**
 
 Most "animated splash" solutions render the animation with React, so it can only start once the JS bundle has loaded. Until then your users stare at a static image. SplashMotion plays your animation in a native view from the very first frames of app launch, keeps it running **while** the bundle loads, and hands off to your app with a polished outro.
 
