@@ -14,5 +14,5 @@
     "customConditions": []
   },
   "include": ["cli", "plugin"],
-  "exclude": []
+  "exclude": ["**/__tests__"]
 }

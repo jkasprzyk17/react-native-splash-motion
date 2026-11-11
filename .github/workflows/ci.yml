@@ -32,6 +32,19 @@ jobs:
         run: yarn typecheck
 
 
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Run unit tests
+        run: yarn test
+
   build-library:
     runs-on: ubuntu-latest
 
@@ -44,6 +57,56 @@ jobs:
 
       - name: Build package
         run: yarn prepare
+
+  # Exercises the real generator against the example app (including a re-run
+  # and the --still path) and validates every file it writes.
+  cli-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build package
+        run: yarn prepare
+
+      - name: Generate splash (iOS + Android)
+        run: node lib/cli/index.js generate assets/splash.json --project-root example --background "#0F6E56" --width 160
+
+      - name: Re-run with a launch-screen still (idempotency)
+        run: |
+          base64 -d > "$RUNNER_TEMP/still.png" <<< 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+          node lib/cli/index.js generate assets/splash.json --project-root example --background "#0F6E56" --width 160 --still "$RUNNER_TEMP/still.png"
+
+      - name: Install xmllint
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+
+      - name: Validate generated XML
+        run: |
+          xmllint --noout \
+            example/ios/LivesplashExample/LaunchScreen.storyboard \
+            example/android/app/src/main/AndroidManifest.xml \
+            example/android/app/src/main/res/values/styles.xml \
+            example/android/app/src/main/res/values/splashmotion_colors.xml \
+            example/android/app/src/main/res/drawable/splashmotion_icon.xml \
+            example/android/app/src/main/res/drawable-v31/splashmotion_icon.xml
+
+      - name: Validate generated JSON
+        run: |
+          for f in \
+            example/ios/LivesplashExample/Images.xcassets/SplashMotionBackground.colorset/Contents.json \
+            example/ios/LivesplashExample/Images.xcassets/SplashMotionConfig.dataset/Contents.json \
+            example/ios/LivesplashExample/Images.xcassets/SplashMotionConfig.dataset/config.json \
+            example/ios/LivesplashExample/Images.xcassets/SplashMotionAnimation.dataset/Contents.json \
+            example/ios/LivesplashExample/Images.xcassets/SplashMotionAnimation.dataset/animation.json \
+            example/ios/LivesplashExample/Images.xcassets/SplashMotionStill.imageset/Contents.json \
+            example/android/app/src/main/assets/splashmotion/config.json \
+            example/android/app/src/main/assets/splashmotion/animation.json; do
+            node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$f" || exit 1
+          done
 
   build-android:
     runs-on: ubuntu-latest

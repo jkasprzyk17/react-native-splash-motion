@@ -755,9 +755,16 @@ export function patchAndroidProject(projectRoot: string) {
   const appTheme = manifest.match(
     /<application\b[^>]*android:theme="([^"]+)"/
   )?.[1];
+  // On a re-run the activity already points at SplashMotionTheme; recover the
+  // app's real theme from the style generated last time.
+  let styles = fs.readFileSync(stylesPath, 'utf8');
+  const previousPostTheme = styles.match(
+    /<style name="SplashMotionTheme"(?:(?!<\/style>)[\s\S])*?<item name="postSplashScreenTheme">([^<]+)<\/item>/
+  )?.[1];
   let postTheme = '@style/AppTheme';
   if (currentTheme && currentTheme !== '@style/SplashMotionTheme')
     postTheme = currentTheme;
+  else if (previousPostTheme) postTheme = previousPostTheme;
   else if (appTheme && appTheme !== '@style/SplashMotionTheme')
     postTheme = appTheme;
 
@@ -773,7 +780,6 @@ export function patchAndroidProject(projectRoot: string) {
   manifest = manifest.replace(activity[0], patchedActivity);
   fs.writeFileSync(manifestPath, manifest);
 
-  let styles = fs.readFileSync(stylesPath, 'utf8');
   styles = styles.replace(
     /\s*<style name="SplashMotionTheme"[\s\S]*?<\/style>/,
     ''

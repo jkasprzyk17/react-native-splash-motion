@@ -77,7 +77,13 @@ To fix formatting errors, run the following:
 yarn lint --fix
 ```
 
+To run the unit tests for the splash generator (`cli/core.ts`), run:
 
+```sh
+yarn test
+```
+
+The tests live in `cli/__tests__/`. When you change the generator, add or update the tests there — the fixtures build real Lottie files, `.lottie` archives and native projects in temporary folders, so no checked-in fixtures are needed.
 
 ### Scripts
 
@@ -85,6 +91,7 @@ The `package.json` file contains various scripts for common tasks:
 
 - `yarn`: setup project by installing dependencies.
 - `yarn nitrogen`: regenerate the Nitro native boilerplate in `nitrogen/generated/` (run after changing a `*.nitro.ts` spec).
+- `yarn test`: run the generator unit tests with [Vitest](https://vitest.dev/).
 - `yarn typecheck`: type-check files with TypeScript.
 - `yarn lint`: lint files with [ESLint](https://eslint.org/).
 - `yarn example start`: start the Metro server for the example app.
