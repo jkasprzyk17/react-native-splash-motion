@@ -1,4 +1,4 @@
-# react-native-splash-motion — React Native Splash Screen with Lottie Animation
+# react-native-splash-motion
 
 **An animated React Native splash screen with Lottie & dotLottie — rendered natively, _before_ your JavaScript loads.**
 
