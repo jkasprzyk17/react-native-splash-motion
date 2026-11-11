@@ -1,6 +1,9 @@
 #!/usr/bin/env node
+import fs from 'fs';
 import path from 'path';
 import * as core from './core';
+import { runDoctor } from './doctor';
+import { nextSteps, parseArgs, parsePlatforms, validateFlags } from './args';
 
 const HELP = `
   Usage: npx splash-motion generate <animation> [options]
@@ -19,66 +22,57 @@ const HELP = `
     --no-loop                 Play once and hold the last frame
     --keep-background         Keep a full-canvas background solid in the
                               animation (removed by default)
+    --force                   Replace the iOS launch storyboard without keeping a
+                              .bak copy of one SplashMotion didn't generate
     --platforms <list>        ios,android                   (default: both)
     --project-root <path>     Your app's root folder        (default: current directory)
+    --version                 Print the installed splash-motion version
 
   Example:
     npx splash-motion generate assets/splash.json --background "#0F6E56" --width 200
+
+  npx splash-motion doctor [--project-root <path>]
+
+  Checks the generated setup: assets, launch-screen wiring, marker names
+  and common conflicts. Exits non-zero when something is broken.
 `;
 
-const BOOLEAN_FLAGS = new Set(['keep-background']);
-
-type Flags = Record<string, string | boolean | undefined>;
-
-function parseArgs(argv: string[]) {
-  const positional: string[] = [];
-  const flags: Flags = {};
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i]!;
-    if (arg === '-h' || arg === '--help') {
-      flags.help = true;
-    } else if (BOOLEAN_FLAGS.has(arg.slice(2))) {
-      flags[toCamel(arg.slice(2))] = true;
-    } else if (arg.startsWith('--no-')) {
-      flags[toCamel(arg.slice(5))] = false;
-    } else if (arg.startsWith('--')) {
-      const [key = '', inline] = arg.slice(2).split('=');
-      const value = inline ?? argv[++i];
-      if (value === undefined)
-        throw new Error(`${core.LOG} Missing value for --${key}`);
-      flags[toCamel(key)] = value;
-    } else {
-      positional.push(arg);
-    }
-  }
-  return { positional, flags };
-}
-
-function toCamel(s: string) {
-  return s.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
-}
+// lib/cli/index.js sits two levels below the package root.
+const { version: packageVersion } = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8')
+) as { version: string };
 
 function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
   const [command, source] = positional;
 
+  if (flags.version) {
+    console.log(packageVersion);
+    return;
+  }
   if (flags.help || !command) {
     console.log(HELP);
     return;
   }
-  if (command !== 'generate') {
+  if (command !== 'generate' && command !== 'doctor') {
     throw new Error(
       `${core.LOG} Unknown command "${command}". Run with --help.`
     );
   }
+  validateFlags(command, flags);
 
   const projectRoot = path.resolve(
     typeof flags.projectRoot === 'string' ? flags.projectRoot : process.cwd()
   );
-  const platforms = String(flags.platforms ?? 'ios,android')
-    .split(',')
-    .map((p) => p.trim());
-  // Flags are untyped argv strings; resolveOptions validates them.
+
+  if (command === 'doctor') {
+    const report = runDoctor(projectRoot);
+    if (report.errors > 0) process.exitCode = 1;
+    return;
+  }
+
+  const platforms = parsePlatforms(flags.platforms);
+  // Flags are untyped argv strings; resolveOptions validates their values.
   const options = core.resolveOptions(projectRoot, {
     ...flags,
     source,
@@ -89,10 +83,15 @@ function main() {
   );
 
   if (platforms.includes('ios')) {
-    const { storyboard } = core.generateIos(projectRoot, options);
+    const { storyboard, backup } = core.generateIos(projectRoot, options);
     console.log(
       `  ✓ iOS      assets + ${path.relative(projectRoot, storyboard)}`
     );
+    if (backup) {
+      console.log(
+        `             kept your previous launch screen as ${path.relative(projectRoot, backup)}`
+      );
+    }
   }
   if (platforms.includes('android')) {
     core.generateAndroidFiles(projectRoot, options);
@@ -100,12 +99,7 @@ function main() {
     console.log('  ✓ Android  assets, colors, theme and manifest');
   }
 
-  console.log(`
-  Next steps:
-    1. cd ios && pod install
-    2. Rebuild the app (a JS reload is not enough)
-    3. Call SplashMotion.hide() when your app is ready
-`);
+  console.log(nextSteps(platforms));
 }
 
 try {

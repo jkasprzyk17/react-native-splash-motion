@@ -73,6 +73,9 @@ jobs:
       - name: Build package
         run: yarn prepare
 
+      - name: CLI prints its version
+        run: node lib/cli/index.js --version
+
       - name: Generate splash (iOS + Android)
         run: node lib/cli/index.js generate assets/splash.json --project-root example --background "#0F6E56" --width 160
 
