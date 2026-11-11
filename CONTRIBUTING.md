@@ -109,3 +109,17 @@ When you're sending a pull request:
 - Review the documentation to make sure it looks good.
 - Follow the pull request template when opening a pull request.
 - For pull requests that change the API or implementation, discuss with maintainers first by opening an issue.
+
+### Releasing
+
+Maintainers publish from CI; nothing is published from a laptop.
+
+1. Bump `version` in `package.json` and merge it to `main` (for example `chore: release 0.1.3`).
+2. Tag that commit and push the tag:
+
+   ```sh
+   git tag v0.1.3
+   git push origin v0.1.3
+   ```
+
+The `Release` workflow checks that the tag matches `package.json` and is on `main`, runs lint, typecheck and tests, builds, verifies the package contents, then publishes to npm with provenance and creates the GitHub release. Tags containing a `-` (such as `v0.2.0-beta.1`) are published under the `next` dist-tag and marked as pre-releases. The workflow needs an `NPM_TOKEN` repository secret, unless the package is set up for npm trusted publishing.

@@ -39,6 +39,48 @@ body:
       placeholder: "x.x.x"
     validations:
       required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: Where does the bug happen?
+      options:
+        - iOS
+        - Android
+        - Both
+    validations:
+      required: true
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Project setup
+      description: How is your app built?
+      options:
+        - Bare React Native (CLI)
+        - Expo (prebuild / EAS Build)
+        - Expo development build (expo-dev-client)
+    validations:
+      required: true
+  - type: dropdown
+    id: build-type
+    attributes:
+      label: Build type and device
+      description: Splash timing differs a lot between these, so please be specific.
+      options:
+        - Release build on a real device
+        - Debug build on a real device
+        - Release build on a simulator / emulator
+        - Debug build on a simulator / emulator
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`npx splash-motion doctor` output"
+      description: Run it from your app's root folder and paste the result. It checks that the splash is wired up correctly on both platforms.
+      render: shell
+    validations:
+      required: true
   - type: textarea
     id: react-native-info
     attributes:
