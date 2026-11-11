@@ -8,6 +8,7 @@
  *
  * `source` can be a Lottie .json or a dotLottie .lottie file.
  */
+import path from 'path';
 import * as core from '../cli/core';
 
 // The slice of `expo/config-plugins` used here, typed locally so the package
@@ -85,11 +86,37 @@ const withSplashMotion: ConfigPlugin<core.SplashOptions> = (
     );
   }
 
+  // Check once at plugin entry, not inside a platform mod: iOS-only prebuilds
+  // need the warning too, and combined conflicts should only print once.
+  const internal = config._internal as { projectRoot?: unknown } | undefined;
+  const projectRoot =
+    typeof internal?.projectRoot === 'string'
+      ? internal.projectRoot
+      : process.cwd();
+  const plugins = Array.isArray(config.plugins) ? config.plugins : [];
+  const usage = core.expoSplashScreenUsage(projectRoot, plugins);
+  if (usage.length > 0) {
+    const where = usage
+      .map((u) => (u === 'dependency' ? 'dependencies' : 'Expo plugins'))
+      .join(' and ');
+    console.warn(
+      `${core.LOG} expo-splash-screen is present in your ${where}. Remove it — SplashMotion replaces it.`
+    );
+  }
+
   config = withDangerousMod(config, [
     'ios',
     (c) => {
       const root = c.modRequest.projectRoot;
-      core.generateIos(root, core.resolveOptions(root, props));
+      const { backup } = core.generateIos(
+        root,
+        core.resolveOptions(root, props)
+      );
+      if (backup) {
+        console.log(
+          `${core.LOG} Kept your previous launch screen as ${path.relative(root, backup)}`
+        );
+      }
       return c;
     },
   ]);
